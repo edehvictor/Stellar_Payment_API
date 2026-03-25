@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -17,6 +18,7 @@ export default function Navbar() {
   ];
 
   return (
+    <nav className="border-b border-white/10 bg-black/50 backdrop-blur dark:border-white/10 dark:bg-black/50">
     <nav className="border-b border-white/10 bg-black/50 backdrop-blur">
       <div className="mx-auto max-w-7xl px-6">
         <div className="flex h-16 items-center justify-between">

@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Space_Grotesk, Space_Mono } from "next/font/google";
+import ThemeProvider from "@/components/ThemeProvider";
 import Navbar from "@/components/Navbar";
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
@@ -12,6 +13,12 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${spaceGrotesk.variable} ${spaceMono.variable} min-h-screen font-sans`}>
+        <ThemeProvider>
+          <Navbar />
+          {children}
+        </ThemeProvider>
     <html lang="en">
       <body className={`${spaceGrotesk.variable} ${spaceMono.variable} min-h-screen font-sans`}>
         <Navbar />
