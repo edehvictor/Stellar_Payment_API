@@ -19,6 +19,7 @@
     "express": "^4.19.2",
     "express-rate-limit": "^8.3.1",
     "morgan": "^1.10.0",
+    "pg": "^8.20.0",
     "stellar-sdk": "^12.1.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"

@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase.js";
 import { findMatchingPayment } from "../lib/stellar.js";
 import { sendWebhook } from "../lib/webhooks.js";
 import rateLimit from "express-rate-limit";
+import { validateUuidParam } from "../lib/validate-uuid.js";
 
 const router = express.Router();
 
@@ -183,7 +184,7 @@ router.post("/create-payment", async (req, res, next) => {
  *       404:
  *         description: Payment not found
  */
-router.get("/payment-status/:id", async (req, res, next) => {
+router.get("/payment-status/:id", validateUuidParam(), async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from("payments")
@@ -239,7 +240,7 @@ router.get("/payment-status/:id", async (req, res, next) => {
  *       404:
  *         description: Payment not found
  */
-router.post("/verify-payment/:id", verifyPaymentRateLimit, async (req, res, next) => {
+router.post("/verify-payment/:id", verifyPaymentRateLimit, validateUuidParam(), async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from("payments")

@@ -8,12 +8,16 @@ import paymentsRouter from "./routes/payments.js";
 import merchantsRouter from "./routes/merchants.js";
 import { requireApiKeyAuth } from "./lib/auth.js";
 import { supabase } from "./lib/supabase.js";
+import { pool, closePool } from "./lib/db.js";
 import { validateEnvironmentVariables } from "./lib/env-validation.js";
 
 validateEnvironmentVariables();
 
 const app = express();
 const port = process.env.PORT || 4000;
+
+// Make the pool available to all routes via req.app.locals.pool
+app.locals.pool = pool;
 
 const swaggerSpec = swaggerJsdoc({
   definition: {
@@ -83,6 +87,26 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(port, () => {
+// Verify pg pool reaches Postgres before accepting traffic
+pool.query('SELECT 1').then(() => {
+  console.log('✅ pg pool connected (Supabase pooler)');
+}).catch((err) => {
+  console.warn('⚠️  pg pool probe failed — check DATABASE_URL:', err.message);
+});
+
+const server = app.listen(port, () => {
   console.log(`API listening on http://localhost:${port}`);
 });
+
+// Graceful shutdown: drain in-flight queries then exit
+function shutdown(signal) {
+  console.log(`${signal} received — closing server and pg pool...`);
+  server.close(async () => {
+    await closePool();
+    console.log('pg pool closed. Goodbye.');
+    process.exit(0);
+  });
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));
