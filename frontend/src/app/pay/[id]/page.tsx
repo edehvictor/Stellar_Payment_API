@@ -91,6 +91,32 @@ export default function PaymentPage() {
     return () => controller.abort();
   }, [paymentId]);
 
+  // Poll payment status every 5 seconds until confirmed/completed
+  useEffect(() => {
+    if (loading) return;
+
+    const isSettled = payment?.status === "confirmed" || payment?.status === "completed";
+    if (!payment || isSettled) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+        const response = await fetch(`${apiUrl}/api/payment-status/${paymentId}`);
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (data.payment) {
+          setPayment(data.payment);
+        }
+      } catch {
+        // Silent failure — polling will retry on next interval
+      }
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [paymentId, payment, loading]);
+
   // Check if Freighter is available
   useEffect(() => {
     const checkFreighter = async () => {
