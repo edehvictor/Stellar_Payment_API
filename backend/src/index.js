@@ -2,7 +2,6 @@ import cors from "cors";
 import "dotenv/config";
 import express from "express";
 import morgan from "morgan";
-import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import { ZodError } from "zod";
 import createPaymentsRouter from "./routes/payments.js";
@@ -22,6 +21,7 @@ import {
   createRedisRateLimitStore,
   createVerifyPaymentRateLimit,
 } from "./lib/rate-limit.js";
+import { createSwaggerSpec } from "./swagger.js";
 
 validateEnvironmentVariables();
 
@@ -36,17 +36,8 @@ const port = process.env.PORT || 4000;
 // Make the pool available to all routes via req.app.locals.pool
 app.locals.pool = pool;
 
-const swaggerSpec = swaggerJsdoc({
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "Stellar Payment API",
-      version: "0.1.0",
-      description: "API for creating and verifying Stellar network payments",
-    },
-    servers: [{ url: `http://localhost:${port}` }],
-  },
-  apis: ["./src/routes/*.js"],
+const swaggerSpec = createSwaggerSpec({
+  serverUrl: `http://localhost:${port}`,
 });
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
