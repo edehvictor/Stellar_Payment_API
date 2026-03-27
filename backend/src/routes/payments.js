@@ -153,7 +153,8 @@ function createPaymentsRouter({
       if (Array.isArray(allowedIssuers) && allowedIssuers.length > 0) {
         if (!body.asset_issuer || !allowedIssuers.includes(body.asset_issuer)) {
           return res.status(400).json({
-            error: "asset_issuer is not in the merchant's list of allowed issuers",
+            error:
+              "asset_issuer is not in the merchant's list of allowed issuers",
           });
         }
       }
@@ -245,11 +246,17 @@ function createPaymentsRouter({
     validateUuidParam(),
     async (req, res, next) => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("payments")
           .select(
-            "id, amount, asset, asset_issuer, recipient, description, memo, memo_type, status, tx_id, metadata, created_at, merchants(branding_config)",
-          )
+            "id, amount, asset, asset_issuer, recipient, description, memo, memo_type, status, tx_id, metadata, created_at, merchants(branding_config)"
+          );
+
+        if (req.merchant?.id) {
+          query = query.eq("merchant_id", req.merchant.id);
+        }
+
+        const { data, error } = await query
           .eq("id", req.params.id)
           .maybeSingle();
 
@@ -276,7 +283,7 @@ function createPaymentsRouter({
       } catch (err) {
         next(err);
       }
-    },
+    }
   );
 
   /**
@@ -300,7 +307,7 @@ function createPaymentsRouter({
    *             schema:
    *               type: object
    *               properties:
- *                 status:
+   *                 status:
    *                   type: string
    *                   enum: [pending, confirmed]
    *                 tx_id:
@@ -316,11 +323,17 @@ function createPaymentsRouter({
     validateUuidParam(),
     async (req, res, next) => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("payments")
           .select(
-            "id, merchant_id, amount, asset, asset_issuer, recipient, status, tx_id, memo, memo_type, webhook_url, merchants(webhook_secret)",
-          )
+            "id, merchant_id, amount, asset, asset_issuer, recipient, status, tx_id, memo, memo_type, webhook_url, merchants(webhook_secret)"
+          );
+
+        if (req.merchant?.id) {
+          query = query.eq("merchant_id", req.merchant.id);
+        }
+
+        const { data, error } = await query
           .eq("id", req.params.id)
           .maybeSingle();
 
@@ -391,7 +404,7 @@ function createPaymentsRouter({
             recipient: data.recipient,
             tx_id: match.transaction_hash,
           },
-          merchantSecret,
+          merchantSecret
         );
 
         if (!webhookResult.ok && !webhookResult.skipped) {
@@ -407,7 +420,7 @@ function createPaymentsRouter({
       } catch (err) {
         next(err);
       }
-    },
+    }
   );
 
   /**
@@ -478,7 +491,7 @@ function createPaymentsRouter({
       const { data: payments, error: dataError } = await supabase
         .from("payments")
         .select(
-          "id, amount, asset, asset_issuer, recipient, description, status, tx_id, created_at",
+          "id, amount, asset, asset_issuer, recipient, description, status, tx_id, created_at"
         )
         .eq("merchant_id", req.merchant.id)
         .order("created_at", { ascending: false })
@@ -643,7 +656,7 @@ function createPaymentsRouter({
         const { data: payment, error } = await supabase
           .from("payments")
           .select(
-            "id, merchant_id, amount, asset, asset_issuer, recipient, status, tx_id, metadata",
+            "id, merchant_id, amount, asset, asset_issuer, recipient, status, tx_id, metadata"
           )
           .eq("id", req.params.id)
           .eq("merchant_id", req.merchant.id)
@@ -717,7 +730,7 @@ function createPaymentsRouter({
       } catch (err) {
         next(err);
       }
-    },
+    }
   );
 
   /**
@@ -799,7 +812,7 @@ function createPaymentsRouter({
       } catch (err) {
         next(err);
       }
-    },
+    }
   );
 
   /**
@@ -852,13 +865,20 @@ function createPaymentsRouter({
 
         if (!sourceAsset || !sourceAccount) {
           return res.status(400).json({
-            error: "source_asset and source_account query parameters are required",
+            error:
+              "source_asset and source_account query parameters are required",
           });
         }
 
-        const { data, error } = await supabase
+        let query = supabase
           .from("payments")
-          .select("id, amount, asset, asset_issuer, recipient, status")
+          .select("id, amount, asset, asset_issuer, recipient, status");
+
+        if (req.merchant?.id) {
+          query = query.eq("merchant_id", req.merchant.id);
+        }
+
+        const { data, error } = await query
           .eq("id", req.params.id)
           .maybeSingle();
 
@@ -878,7 +898,8 @@ function createPaymentsRouter({
 
         if (sameAsset) {
           return res.status(400).json({
-            error: "Source asset is the same as destination asset. Use a direct payment.",
+            error:
+              "Source asset is the same as destination asset. Use a direct payment.",
           });
         }
 
@@ -900,7 +921,8 @@ function createPaymentsRouter({
         }
 
         const sendMax = (
-          parseFloat(quote.source_amount) * (1 + SLIPPAGE)
+          parseFloat(quote.source_amount) *
+          (1 + SLIPPAGE)
         ).toFixed(7);
 
         res.json({
@@ -917,7 +939,7 @@ function createPaymentsRouter({
       } catch (err) {
         next(err);
       }
-    },
+    }
   );
 
   return router;
