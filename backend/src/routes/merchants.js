@@ -10,6 +10,7 @@ import {
 import { resolveBrandingConfig } from "../lib/branding.js";
 import { resolveMerchantSettings } from "../lib/merchant-settings.js";
 import { sendWebhook } from "../lib/webhooks.js";
+import { getPayloadForVersion } from "../webhooks/resolver.js";
 
 const router = express.Router();
 
@@ -280,13 +281,18 @@ router.post("/test-webhook", async (req, res, next) => {
       return res.status(400).json({ error: "webhook_url must be a valid URL" });
     }
 
-    const result = await sendWebhook(
-      webhook_url,
+    const payload = getPayloadForVersion(
+      req.merchant.webhook_version,
+      "ping",
       {
-        event: "ping",
         merchant_id: req.merchant.id,
         timestamp: new Date().toISOString(),
-      },
+      }
+    );
+
+    const result = await sendWebhook(
+      webhook_url,
+      payload,
       req.merchant.webhook_secret || null
     );
 

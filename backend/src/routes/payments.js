@@ -16,6 +16,7 @@ import {
 import { createCreatePaymentRateLimit } from "../lib/create-payment-rate-limit.js";
 import { sendWebhook } from "../lib/webhooks.js";
 import { resolveBrandingConfig } from "../lib/branding.js";
+import { getPayloadForVersion } from "../webhooks/resolver.js";
 
 const createPaymentRateLimit = createCreatePaymentRateLimit();
 
@@ -319,7 +320,7 @@ function createPaymentsRouter({
         const { data, error } = await supabase
           .from("payments")
           .select(
-            "id, merchant_id, amount, asset, asset_issuer, recipient, status, tx_id, memo, memo_type, webhook_url, merchants(webhook_secret)",
+            "id, merchant_id, amount, asset, asset_issuer, recipient, status, tx_id, memo, memo_type, webhook_url, merchants(webhook_secret, webhook_version)",
           )
           .eq("id", req.params.id)
           .maybeSingle();
@@ -379,18 +380,20 @@ function createPaymentsRouter({
         }
 
         const merchantSecret = data.merchants?.webhook_secret;
+        const merchantVersion = data.merchants?.webhook_version || "v1";
+
+        const webhookPayload = getPayloadForVersion(merchantVersion, "payment.confirmed", {
+          payment_id: data.id,
+          amount: data.amount,
+          asset: data.asset,
+          asset_issuer: data.asset_issuer,
+          recipient: data.recipient,
+          tx_id: match.transaction_hash,
+        });
 
         const webhookResult = await sendWebhook(
           data.webhook_url,
-          {
-            event: "payment.confirmed",
-            payment_id: data.id,
-            amount: data.amount,
-            asset: data.asset,
-            asset_issuer: data.asset_issuer,
-            recipient: data.recipient,
-            tx_id: match.transaction_hash,
-          },
+          webhookPayload,
           merchantSecret,
         );
 
