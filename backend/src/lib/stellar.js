@@ -11,6 +11,15 @@ const HORIZON_URL =
 const server = new StellarSdk.Horizon.Server(HORIZON_URL);
 const HORIZON_HEALTH_TIMEOUT_MS = 2_000;
 
+function parseStroops(value) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function stroopsToXlm(stroops) {
+  return (stroops / 10_000_000).toFixed(7);
+}
+
 /**
  * Validates Stellar memo format based on memo type
  * @param {string} memo - The memo value
@@ -420,6 +429,39 @@ export async function createRefundTransaction({
     };
   } catch (err) {
     throw handleHorizonError(err, sourceAccount);
+  }
+}
+
+export async function getNetworkFeeStats(operationCount = 1) {
+  try {
+    const safeOperationCount =
+      Number.isInteger(operationCount) && operationCount > 0
+        ? operationCount
+        : 1;
+    const feeStats = await server.feeStats();
+    const lastLedgerBaseFee = parseStroops(feeStats.last_ledger_base_fee);
+    const chargedMode = parseStroops(feeStats.fee_charged?.mode);
+    const chargedP50 = parseStroops(feeStats.fee_charged?.p50);
+    const recommendedFeeStroops = Math.max(
+      lastLedgerBaseFee,
+      chargedMode,
+      chargedP50,
+    );
+    const totalFeeStroops = recommendedFeeStroops * safeOperationCount;
+
+    return {
+      network: NETWORK,
+      horizonUrl: HORIZON_URL,
+      operationCount: safeOperationCount,
+      lastLedgerBaseFee,
+      recommendedFeeStroops,
+      totalFeeStroops,
+      totalFeeXlm: stroopsToXlm(totalFeeStroops),
+      feeCharged: feeStats.fee_charged ?? null,
+      maxFee: feeStats.max_fee ?? null,
+    };
+  } catch (err) {
+    throw handleHorizonError(err, "fee stats");
   }
 }
 

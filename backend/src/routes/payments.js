@@ -32,7 +32,11 @@ import {
 } from "../lib/metrics.js";
 import { sanitizeMetadataMiddleware } from "../lib/sanitize-metadata.js";
 import { supabase } from "../lib/supabase.js";
-import { findMatchingPayment, findStrictReceivePaths } from "../lib/stellar.js";
+import {
+  findMatchingPayment,
+  findStrictReceivePaths,
+  getNetworkFeeStats,
+} from "../lib/stellar.js";
 
 const createPaymentRateLimit = createCreatePaymentRateLimit();
 
@@ -369,6 +373,24 @@ function createPaymentsRouter({
     res.flushHeaders();
 
     streamManager.addClient(req.params.id, res);
+  });
+
+  router.get("/network-fee", async (req, res, next) => {
+    try {
+      const fee = await getNetworkFeeStats(1);
+      res.json({
+        network_fee: {
+          network: fee.network,
+          horizon_url: fee.horizonUrl,
+          operation_count: fee.operationCount,
+          stroops: fee.totalFeeStroops,
+          xlm: fee.totalFeeXlm,
+          last_ledger_base_fee: fee.lastLedgerBaseFee,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
   });
 
   /**

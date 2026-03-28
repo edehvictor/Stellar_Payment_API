@@ -16,6 +16,7 @@ import "react-loading-skeleton/dist/skeleton.css";
 import { QRCodeSVG } from "qrcode.react";
 import { localeToLanguageTag } from "@/i18n/config";
 import Confetti from "react-confetti";
+import { Modal } from "@/components/ui/Modal";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -76,6 +77,17 @@ interface PathQuote {
   destination_amount: string;
   path: Array<{ asset_code: string; asset_issuer: string | null }>;
   slippage: number;
+}
+
+interface NetworkFeeResponse {
+  network_fee: {
+    network: string;
+    horizon_url: string;
+    operation_count: number;
+    stroops: number;
+    xlm: string;
+    last_ledger_base_fee: number;
+  };
 }
 
 // ─── Branding defaults ───────────────────────────────────────────────────────
@@ -375,12 +387,18 @@ export default function PaymentPage() {
   const [showRawIntent, setShowRawIntent] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false);
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [networkFee, setNetworkFee] =
+    useState<NetworkFeeResponse["network_fee"] | null>(null);
+  const [networkFeeLoading, setNetworkFeeLoading] = useState(false);
+  const [networkFeeError, setNetworkFeeError] = useState<string | null>(null);
+  const paymentStatus = payment?.status;
 
   useEffect(() => {
-    if (payment && (payment.status === "confirmed" || payment.status === "completed")) {
+    if (paymentStatus === "confirmed" || paymentStatus === "completed") {
       setShowConfetti(true);
     }
-  }, [payment?.status]);
+  }, [paymentStatus]);
 
   // Path payment state
   const [usePathPayment, setUsePathPayment] = useState(false);
@@ -529,9 +547,47 @@ export default function PaymentPage() {
     };
   }, [payment, activeProvider, paymentId]);
 
+  useEffect(() => {
+    if (!isPayModalOpen) return;
+
+    const controller = new AbortController();
+    const loadNetworkFee = async () => {
+      setNetworkFeeLoading(true);
+      setNetworkFeeError(null);
+
+      try {
+        const res = await fetch(`${API_URL}/api/network-fee`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error(t("networkFeeUnavailable"));
+        }
+
+        const data = (await res.json()) as NetworkFeeResponse;
+        setNetworkFee(data.network_fee);
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setNetworkFee(null);
+        setNetworkFeeError(t("networkFeeUnavailable"));
+      } finally {
+        setNetworkFeeLoading(false);
+      }
+    };
+
+    loadNetworkFee();
+
+    return () => controller.abort();
+  }, [isPayModalOpen, t]);
+
   // ── Pay handler ───────────────────────────────────────────────────────────
-  const handlePay = async () => {
+  const handlePay = () => {
+    setIsPayModalOpen(true);
+  };
+
+  const handleConfirmPay = async () => {
     if (!payment) return;
+    setIsPayModalOpen(false);
     setActionError(null);
 
     try {
@@ -997,6 +1053,57 @@ export default function PaymentPage() {
           </div>
         </div>
       </main>
+      <Modal
+        isOpen={isPayModalOpen}
+        onClose={() => {
+          if (!isProcessing) {
+            setIsPayModalOpen(false);
+          }
+        }}
+        title={t("reviewPaymentTitle")}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              {t("completePayment")}
+            </p>
+            <p className="mt-2 text-2xl font-bold text-white">
+              {usePathPayment && pathQuote
+                ? `${pathQuote.send_max} ${pathQuote.source_asset}`
+                : `${payment.amount.toLocaleString(locale, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 7,
+                  })} ${payment.asset.toUpperCase()}`}
+            </p>
+            <p className="mt-3 text-sm text-slate-300">
+              {networkFeeLoading
+                ? t("loadingNetworkFee")
+                : networkFee
+                  ? t("networkFeeLabel", { amount: networkFee.xlm })
+                  : networkFeeError ?? t("networkFeeUnavailable")}
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setIsPayModalOpen(false)}
+              className="flex h-11 flex-1 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              {t("cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmPay}
+              disabled={isProcessing}
+              className="flex h-11 flex-1 items-center justify-center rounded-xl px-4 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60"
+              style={{ backgroundColor: "var(--checkout-primary)" }}
+            >
+              {t("confirmPayment")}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

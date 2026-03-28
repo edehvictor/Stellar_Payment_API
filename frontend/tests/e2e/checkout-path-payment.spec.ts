@@ -28,6 +28,8 @@ const PAYMENT = {
 test("shows the approximate XLM cost after Freighter connects for a USDC invoice", async ({
   page,
 }) => {
+  let feeRequestCount = 0;
+
   await page.addInitScript(
     ({ sourcePublicKey }) => {
       window.addEventListener("message", (event) => {
@@ -88,6 +90,25 @@ test("shows the approximate XLM cost after Freighter connects for a USDC invoice
     });
   });
 
+  await page.route(`${API_BASE}/api/network-fee`, async (route) => {
+    feeRequestCount += 1;
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        network_fee: {
+          network: "testnet",
+          horizon_url: "https://horizon-testnet.stellar.org",
+          operation_count: 1,
+          stroops: feeRequestCount === 1 ? 100 : 250,
+          xlm: feeRequestCount === 1 ? "0.0000100" : "0.0000250",
+          last_ledger_base_fee: 100,
+        },
+      }),
+    });
+  });
+
   await page.goto(PAY_URL);
 
   await expect(page.getByRole("button", { name: /Freighter/i })).toBeEnabled();
@@ -105,4 +126,11 @@ test("shows the approximate XLM cost after Freighter connects for a USDC invoice
   await expect(
     page.getByRole("button", { name: "Pay 60.7262500 XLM" }),
   ).toBeVisible();
+
+  await page.getByRole("button", { name: "Pay 60.7262500 XLM" }).click();
+  await expect(page.getByText("Network Fee: ~0.0000100 XLM")).toBeVisible();
+
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Pay 60.7262500 XLM" }).click();
+  await expect(page.getByText("Network Fee: ~0.0000250 XLM")).toBeVisible();
 });
