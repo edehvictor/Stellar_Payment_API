@@ -12,6 +12,7 @@ import {
 } from "../lib/request-schemas.js";
 import { validateRequest } from "../lib/validation.js";
 import { createCreatePaymentRateLimit } from "../lib/create-payment-rate-limit.js";
+import { recaptchaMiddleware } from "../lib/recaptcha.js";
 import { sendWebhook } from "../lib/webhooks.js";
 import { sendReceiptEmail } from "../lib/email.js";
 import { renderReceiptEmail } from "../lib/email-templates.js";
@@ -23,6 +24,7 @@ import {
   invalidatePaymentCache,
 } from "../lib/redis.js";
 import { getPayloadForVersion } from "../webhooks/resolver.js";
+import { streamManager } from "../lib/stream-manager.js";
 import {
   paymentCreatedCounter,
   paymentConfirmedCounter,
@@ -31,7 +33,7 @@ import {
 } from "../lib/metrics.js";
 import { sanitizeMetadataMiddleware } from "../lib/sanitize-metadata.js";
 import { supabase } from "../lib/supabase.js";
-import { findMatchingPayment } from "../lib/stellar.js";
+import { findMatchingPayment, findStrictReceivePaths } from "../lib/stellar.js";
 
 const createPaymentRateLimit = createCreatePaymentRateLimit();
 
@@ -60,9 +62,12 @@ function applyPaymentFilters(query, req) {
   }
   if (typeof search === "string" && search.trim().length > 0) {
     const term = search.trim().replaceAll(",", "\\,");
-    query = query.or(
-      `id.ilike.%${term}%,description.ilike.%${term}%,recipient.ilike.%${term}%`
-    );
+    let orQuery = `id.ilike.%${term}%,description.ilike.%${term}%,recipient.ilike.%${term}%`;
+    const numTerm = Number(term);
+    if (!isNaN(numTerm)) {
+      orQuery += `,amount.eq.${numTerm}`;
+    }
+    query = query.or(orQuery);
   }
   return query;
 }
@@ -259,7 +264,7 @@ function createPaymentsRouter({
     }
   }
 
-  router.post("/create-payment", createPaymentRateLimit, validateRequest({ body: paymentSessionZodSchema }), sanitizeMetadataMiddleware, createSession);
+  router.post("/create-payment", createPaymentRateLimit, recaptchaMiddleware(), validateRequest({ body: paymentSessionZodSchema }), sanitizeMetadataMiddleware, createSession);
   router.post("/sessions", createPaymentRateLimit, validateRequest({ body: paymentSessionZodSchema }), sanitizeMetadataMiddleware, createSession);
 
   /**
@@ -346,6 +351,32 @@ function createPaymentsRouter({
 
   /**
    * @swagger
+   * /api/stream/{id}:
+   *   get:
+   *     summary: Subscribe to real-time status updates for a payment
+   *     tags: [Payments]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Payment ID
+   *     responses:
+   *       200:
+   *         description: SSE stream
+   */
+  router.get("/stream/:id", validateUuidParam(), (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    streamManager.addClient(req.params.id, res);
+  });
+
+  /**
+   * @swagger
    * /api/verify-payment/{id}:
    *   post:
    *     summary: Verify a payment on the Stellar network
@@ -360,7 +391,7 @@ function createPaymentsRouter({
         let query = supabase
           .from("payments")
           .select(
-            "id, merchant_id, amount, asset, asset_issuer, recipient, status, tx_id, memo, memo_type, webhook_url, merchants(webhook_secret, webhook_version, notification_email, email)"
+            "id, merchant_id, amount, asset, asset_issuer, recipient, status, tx_id, memo, memo_type, webhook_url, merchants(webhook_secret, webhook_version, webhook_custom_headers, notification_email, email)"
           );
 
         if (req.merchant?.id) {
@@ -442,6 +473,12 @@ function createPaymentsRouter({
           });
         }
 
+        // Notify customer via SSE (issue #89)
+        streamManager.notify(data.id, "payment.confirmed", {
+          status: "confirmed",
+          tx_id: match.transaction_hash,
+        });
+
         const merchantSecret = data.merchants?.webhook_secret;
         const merchantVersion = data.merchants?.webhook_version || "v1";
 
@@ -457,11 +494,12 @@ function createPaymentsRouter({
             tx_id: match.transaction_hash,
           }
         );
-
         const webhookResult = await sendWebhook(
           data.webhook_url,
           webhookPayload,
-          merchantSecret
+          merchantSecret,
+          data.id,
+          data.merchants?.webhook_custom_headers ?? {}
         );
 
         if (!webhookResult.ok && !webhookResult.skipped) {

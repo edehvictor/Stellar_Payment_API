@@ -5,6 +5,7 @@ import { connectRedisClient, closeRedisClient } from "./lib/redis.js";
 import { closePool, pool, startPoolMonitoring } from "./lib/db.js";
 import { validateEnvironmentVariables } from "./lib/env-validation.js";
 import { logger } from "./lib/logger.js";
+import { isHorizonReachable } from "./lib/stellar.js";
 
 initSentry();
 validateEnvironmentVariables();
@@ -16,12 +17,35 @@ async function startServer() {
 
   const { app, io } = await createApp({ redisClient });
 
-  // Probe DB
-  try {
-    await pool.query("SELECT 1");
-    logger.info("pg pool connected");
-  } catch (err) {
-    logger.warn({ err }, "pg pool probe failed");
+  if (process.env.NODE_ENV !== "production") {
+    const probe = async (name, fn) => {
+      const start = Date.now();
+      try {
+        const result = await fn();
+        if (result === false) throw new Error("Unreachable");
+        return { Service: name, Status: "OK", "Latency (ms)": Date.now() - start };
+      } catch (err) {
+        return { Service: name, Status: "FAILED", "Latency (ms)": "N/A" };
+      }
+    };
+
+    const results = await Promise.allSettled([
+      probe("Database", () => pool.query("SELECT 1")),
+      probe("Redis", () => redisClient.ping()),
+      probe("Horizon", () => isHorizonReachable())
+    ]);
+
+    console.log("\n--- Startup Dependency Probes ---");
+    console.table(results.map((r) => r.value));
+    console.log("---------------------------------\n");
+  } else {
+    // Probe DB in production normally
+    try {
+      await pool.query("SELECT 1");
+      logger.info("pg pool connected");
+    } catch (err) {
+      logger.warn({ err }, "pg pool probe failed");
+    }
   }
 
   // Start pool monitoring if enabled

@@ -228,22 +228,28 @@ vi.mock("../../src/lib/stellar.js", () => ({
 /*
  * Redis mock — noop cache so the routes that read/write cache don't explode.
  */
+const redisMemory = new Map();
 vi.mock("../../src/lib/redis.js", () => ({
   connectRedisClient: vi.fn(async () => ({
-    get: vi.fn(async () => null),
-    set: vi.fn(async () => {}),
-    del: vi.fn(async () => {}),
+    get: vi.fn(async (key) => redisMemory.get(key) || null),
+    set: vi.fn(async (key, val) => { redisMemory.set(key, val); }),
+    del: vi.fn(async (key) => { redisMemory.delete(key); }),
     isOpen: true,
   })),
   getCachedPayment: vi.fn(async () => null),
   setCachedPayment: vi.fn(async () => {}),
   invalidatePaymentCache: vi.fn(async () => {}),
   getRedisClient: vi.fn(() => ({
+    get: vi.fn(async (key) => redisMemory.get(key) || null),
+    set: vi.fn(async (key, val, options) => { redisMemory.set(key, val); }),
     ping: vi.fn(async () => "PONG"),
     on: vi.fn(),
     sendCommand: vi.fn(async () => {}),
     isOpen: true,
   })),
+
+
+
   resetRedisClientForTests: vi.fn(),
   paymentCacheKey: (id) => `payment:status:${id}`,
   PAYMENT_STATUS_TTL: 2,
@@ -333,11 +339,13 @@ describe("Payment Lifecycle — Integration", () => {
 
   beforeEach(() => {
     resetStores();
+    redisMemory.clear();
     vi.clearAllMocks();
     mockFindMatchingPayment.mockResolvedValue(null);
     mockSendWebhook.mockResolvedValue({ ok: true, signed: true, status: 200 });
     nock.cleanAll();
   });
+
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 1) Authentication
@@ -857,9 +865,10 @@ describe("Payment Lifecycle — Integration", () => {
         .set("Idempotency-Key", idempotencyKey)
         .send({ amount: 10, asset: "XLM", recipient: STELLAR_RECIPIENT });
 
-      // Duplicate should return 200 (cached), not 201
-      expect(second.status).toBe(200);
+      // Duplicate should return 201 (cached) as per new requirement
+      expect(second.status).toBe(201);
       expect(second.body.payment_id).toBe(first.body.payment_id);
+
     });
 
     it("creates separate payments for different Idempotency-Keys", async () => {

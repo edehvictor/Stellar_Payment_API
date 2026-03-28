@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import PaymentMetrics from "@/components/PaymentMetrics";
-import RecentPayments from "@/components/RecentPayments";
 import WithdrawalModal from "@/components/WithdrawalModal";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import Link from "next/link";

@@ -1,10 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const eq = vi.fn();
+const is = vi.fn();
 const maybeSingle = vi.fn();
-const select = vi.fn(() => ({ eq, maybeSingle }));
-const update = vi.fn(() => ({ eq }));
-const from = vi.fn(() => ({ select, update }));
+
+const chain = {
+  select: vi.fn(() => chain),
+  eq: vi.fn(() => chain),
+  is: vi.fn(() => chain),
+  maybeSingle,
+};
+
+const update = vi.fn(() => chain);
+const from = vi.fn(() => chain);
 
 vi.mock("../lib/supabase.js", () => ({
   supabase: { from },
@@ -23,7 +31,12 @@ describe("API Key Rotation and Expiry - Auth Integration", () => {
     beforeEach(async () => {
         vi.clearAllMocks();
         const { createApiKeyAuth } = await import("../lib/auth.js");
-        requireApiKeyAuth = createApiKeyAuth({ supabaseClient: { from } });
+        // Mock usageRecorder to avoid Redis connection attempts in tests
+        const usageRecorder = vi.fn().mockResolvedValue(undefined);
+        requireApiKeyAuth = createApiKeyAuth({ 
+            supabaseClient: { from },
+            usageRecorder
+        });
     });
 
     it("allows authentication with the current API key", async () => {

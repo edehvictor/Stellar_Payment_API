@@ -8,7 +8,6 @@ import WalletSelector from "@/components/WalletSelector";
 import CopyButton from "@/components/CopyButton";
 import toast from "react-hot-toast";
 import { QRCodeSVG } from "qrcode.react";
-import { Spinner } from "./ui/Spinner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const NETWORK = process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? "testnet";
@@ -386,10 +385,10 @@ export default function PaymentDetailModal({
   // Filter out internal/branding keys from metadata for display
   const displayMetadata = payment?.metadata
     ? Object.fromEntries(
-        Object.entries(payment.metadata).filter(
-          ([key]) => key !== "branding_config",
-        ),
-      )
+      Object.entries(payment.metadata).filter(
+        ([key]) => key !== "branding_config",
+      ),
+    )
     : null;
   const hasMetadata =
     displayMetadata !== null && Object.keys(displayMetadata).length > 0;
@@ -402,9 +401,8 @@ export default function PaymentDetailModal({
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
-          visible ? "opacity-100" : "opacity-0"
-        }`}
+        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${visible ? "opacity-100" : "opacity-0"
+          }`}
         onClick={stableOnClose}
         aria-hidden="true"
       />
@@ -416,9 +414,8 @@ export default function PaymentDetailModal({
         aria-modal="true"
         aria-label="Payment details"
         tabIndex={-1}
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col bg-slate-900 shadow-2xl outline-none transition-transform duration-300 ease-in-out ${
-          visible ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col bg-slate-900 shadow-2xl outline-none transition-transform duration-300 ease-in-out ${visible ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         {/* Header */}
         <div className="flex flex-shrink-0 items-center justify-between border-b border-white/10 p-6">
@@ -616,9 +613,8 @@ export default function PaymentDetailModal({
                       Metadata
                     </span>
                     <svg
-                      className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${
-                        metadataExpanded ? "rotate-180" : ""
-                      }`}
+                      className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${metadataExpanded ? "rotate-180" : ""
+                        }`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -691,7 +687,7 @@ export default function PaymentDetailModal({
                   ) : (
                     <WalletSelector
                       networkPassphrase={networkPassphrase}
-                      onConnected={() => {}}
+                      onConnected={() => { }}
                     />
                   )}
                 </div>

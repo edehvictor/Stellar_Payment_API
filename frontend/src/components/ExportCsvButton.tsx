@@ -7,7 +7,6 @@
 
 import React, { useState, useCallback } from "react";
 import { exportTransactionsToCsv, Transaction } from "@/lib/exportCsv";
-import { Spinner } from "./ui/Spinner";
 
 interface ExportCsvButtonProps {
   transactions: Transaction[];

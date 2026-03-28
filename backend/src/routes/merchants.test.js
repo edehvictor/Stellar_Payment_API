@@ -26,7 +26,10 @@ function getRotateWebhookSecretHandler(router) {
     throw new Error("rotate-webhook-secret route not found");
   }
 
-  return layer.route.stack[0].handle;
+  // Find the actual handler: it's typically the last one in the route's stack,
+  // following any middlewares like validateRequest.
+  const handlers = layer.route.stack;
+  return handlers[handlers.length - 1].handle;
 }
 
 describe("POST /api/merchants/rotate-webhook-secret", () => {

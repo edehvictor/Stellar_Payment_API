@@ -10,7 +10,6 @@ import {
   useMerchantHydrated,
   useSetMerchantApiKey,
 } from "@/lib/merchant-store";
-import { Spinner } from "@/components/ui/Spinner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const HEX_COLOR_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
@@ -32,9 +31,9 @@ function hexToRgb(hex: string) {
   const full =
     clean.length === 3
       ? clean
-          .split("")
-          .map((c) => `${c}${c}`)
-          .join("")
+        .split("")
+        .map((c) => `${c}${c}`)
+        .join("")
       : clean;
   const int = Number.parseInt(full, 16);
 
@@ -430,33 +429,30 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setActiveTab("api")}
-            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium ${
-              activeTab === "api"
+            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium ${activeTab === "api"
                 ? "bg-white text-black"
                 : "text-slate-300 hover:bg-white/10"
-            }`}
+              }`}
           >
             API Keys
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("branding")}
-            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium ${
-              activeTab === "branding"
+            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium ${activeTab === "branding"
                 ? "bg-white text-black"
                 : "text-slate-300 hover:bg-white/10"
-            }`}
+              }`}
           >
             Branding
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("webhooks")}
-            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium ${
-              activeTab === "webhooks"
+            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium ${activeTab === "webhooks"
                 ? "bg-white text-black"
                 : "text-slate-300 hover:bg-white/10"
-            }`}
+              }`}
           >
             Webhooks
           </button>
@@ -483,9 +479,8 @@ export default function SettingsPage() {
 
               <div className="flex items-center gap-2 overflow-hidden rounded-xl border border-white/10 bg-black/40 p-1 pl-4">
                 <code
-                  className={`flex-1 truncate font-mono text-sm transition-colors ${
-                    revealed ? "text-mint" : "text-slate-500"
-                  }`}
+                  className={`flex-1 truncate font-mono text-sm transition-colors ${revealed ? "text-mint" : "text-slate-500"
+                    }`}
                 >
                   {displayKey}
                 </code>
@@ -730,11 +725,10 @@ export default function SettingsPage() {
                   aria-describedby={
                     webhookUrlError ? "webhook-url-error" : undefined
                   }
-                  className={`w-full rounded-xl border bg-black/40 p-3 font-mono text-sm text-white placeholder-slate-600 outline-none transition-colors focus:ring-1 ${
-                    webhookUrlError
+                  className={`w-full rounded-xl border bg-black/40 p-3 font-mono text-sm text-white placeholder-slate-600 outline-none transition-colors focus:ring-1 ${webhookUrlError
                       ? "border-red-500/50 focus:border-red-500 focus:ring-red-500/30"
                       : "border-white/10 focus:border-mint/50 focus:ring-mint/20"
-                  }`}
+                    }`}
                 />
                 {webhookUrlError && (
                   <p

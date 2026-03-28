@@ -12,6 +12,7 @@ import {
   webhookSettingsSchema,
   testWebhookSchema,
 } from "../lib/request-schemas.js";
+import { merchantService } from "../services/merchantService.js";
 
 const defaultMerchantRegistrationRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
@@ -29,18 +30,8 @@ const setApiKeyExpirySchema = z.object({
   expires_at: z.string().datetime({ offset: true }).or(z.string().datetime()),
 });
 
-/**
- * @swagger
- * /api/register-merchant:
- *   post:
- *     summary: Register a new merchant
- *     description: Create a new merchant account and receive API key and webhook secret credentials
- *     tags: [Merchants]
- */
-router.post("/register-merchant", async (req, res, next) => {
-  try {
-    const body = registerMerchantZodSchema.parse(req.body || {});
-    const merchant = await merchantService.registerMerchant(body);
+
+
 function createMerchantsRouter({
   merchantRegistrationRateLimit = defaultMerchantRegistrationRateLimit,
 } = {}) {
@@ -520,11 +511,16 @@ function createMerchantsRouter({
       try {
         const body = req.body;
 
+        const updatePayload = { webhook_url: body.webhook_url || null };
+        if ("custom_headers" in body) {
+          updatePayload.webhook_custom_headers = body.custom_headers ?? null;
+        }
+
         const { data, error } = await supabase
           .from("merchants")
-          .update({ webhook_url: body.webhook_url || null })
+          .update(updatePayload)
           .eq("id", req.merchant.id)
-          .select("webhook_url")
+          .select("webhook_url, webhook_custom_headers")
           .single();
 
         if (error) {
@@ -532,7 +528,10 @@ function createMerchantsRouter({
           throw error;
         }
 
-        res.json({ webhook_url: data.webhook_url || "" });
+        res.json({
+          webhook_url: data.webhook_url || "",
+          custom_headers: data.webhook_custom_headers ?? {},
+        });
       } catch (err) {
         next(err);
       }
@@ -573,354 +572,142 @@ function createMerchantsRouter({
     }
   });
 
-  /**
- * @swagger
- * /api/merchants/generate-api-key:
- *   post:
- *     summary: Generate an API key using session authentication
- *     tags: [Merchants]
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: New API key issued
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 api_key:
- *                   type: string
- */
-router.post("/merchants/generate-api-key", requireSessionAuth(), async (req, res, next) => {
-  try {
-    const newApiKey = `sk_${randomBytes(24).toString("hex")}`;
-
-    const { error } = await supabase
-      .from("merchants")
-      .update({ api_key: newApiKey })
-      .eq("id", req.merchant.id);
-
-    if (error) {
-      error.status = 500;
-      throw error;
-    }
-
-    res.json({
-      webhook_secret: newWebhookSecret,
-      webhook_secret_old_expires_at: expiryIso,
-      grace_period_hours: graceHours,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * @swagger
- * /api/merchants/rotate-api-key:
- *   post:
- *     summary: Rotate API key with overlap period for seamless migration
- *     tags: [Merchants]
- *     security:
- *       - ApiKeyAuth: []
- *     requestBody:
- *       required: false
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               grace_period_hours:
- *                 type: integer
- *                 description: Hours the old key remains valid (0-168, default 24)
- *                 default: 24
- *     responses:
- *       200:
- *         description: New API key generated with old key overlap period
- */
-router.post("/merchants/rotate-api-key", async (req, res, next) => {
-  try {
-    const body = rotateApiKeySchema.parse(req.body || {});
-    const result = await merchantService.rotateApiKey(
-      req.merchant.id,
-      body.grace_period_hours
-    );
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * @swagger
- * /api/merchants/api-key-status:
- *   get:
- *     summary: Get current API key status and expiry information
- *     tags: [Merchants]
- *     security:
- *       - ApiKeyAuth: []
- *     responses:
- *       200:
- *         description: API key status information
- */
-router.get("/merchants/api-key-status", async (req, res, next) => {
-  try {
-    const result = await merchantService.getApiKeyStatus(req.merchant.id);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * @swagger
- * /api/merchants/set-api-key-expiry:
- *   put:
- *     summary: Set an expiry date for the current API key
- *     tags: [Merchants]
- *     security:
- *       - ApiKeyAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - expires_at
- *             properties:
- *               expires_at:
- *                 type: string
- *                 format: date-time
- *                 description: ISO 8601 datetime when the API key expires
- */
-router.put("/merchants/set-api-key-expiry", async (req, res, next) => {
-  try {
-    const body = setApiKeyExpirySchema.parse(req.body);
-    const result = await merchantService.setApiKeyExpiry(
-      req.merchant.id,
-      body.expires_at
-    );
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * @swagger
- * /api/merchants/rotate-webhook-secret:
- *   post:
- *     summary: Rotate the authenticated merchant's webhook signing secret
- *     tags: [Merchants]
- *     security:
- *       - ApiKeyAuth: []
- */
-router.post("/merchants/rotate-webhook-secret", async (req, res, next) => {
-router.get("/merchant-branding", async (req, res, next) => {
-  try {
-    const result = await merchantService.getMerchantBranding(req.merchant.id);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.put("/merchant-branding", validateRequest({ body: sessionBrandingSchema }), async (req, res, next) => {
-  try {
-    const brandingConfig = req.body;
-    const resolved = resolveBrandingConfig({ merchantBranding: brandingConfig });
-
-    const { data, error } = await supabase
-      .from("merchants")
-      .update({ branding_config: resolved })
-      .eq("id", req.merchant.id)
-      .select("branding_config")
-      .single();
-
-    if (error) {
-      error.status = 500;
-      throw error;
-    }
-
-    res.json({ branding_config: data.branding_config });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get("/merchant-profile", async (req, res, next) => {
-  try {
-    const result = await merchantService.getMerchantProfile(req.merchant.id);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * @swagger
- * /api/merchant-profile:
- *   delete:
- *     summary: Soft-delete the authenticated merchant's account
- *     tags: [Merchants]
- *     security:
- *       - ApiKeyAuth: []
- *     responses:
- *       200:
- *         description: Account successfully deleted
- *       500:
- *         description: Server error
- */
-router.delete("/merchant-profile", async (req, res, next) => {
-  try {
-    const ts = Date.now();
+    /**
+     * @swagger
+     * /api/merchants/generate-api-key:
+     *   post:
+     *     summary: Generate an API key using session authentication
+     *     tags: [Merchants]
+     *     security:
+     *       - BearerAuth: []
+     *     responses:
+     *       200:
+     *         description: New API key issued
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 api_key:
+     *                   type: string
+     */
+    router.post("/merchants/generate-api-key", requireSessionAuth(), async (req, res, next) => {
+      try {
+        const newApiKey = `sk_${randomBytes(24).toString("hex")}`;
     
-    // Obfuscate unique fields so they can re-register if they want
-    const newEmail = `deleted_${ts}_${req.merchant.email}`;
-    const newApiKey = `deleted_${ts}_${req.merchant.api_key}`;
-
-    const { error } = await supabase
-      .from("merchants")
-      .update({
-        deleted_at: new Date().toISOString(),
-        email: newEmail,
-        api_key: newApiKey
-      })
-      .eq("id", req.merchant.id);
-
-    if (error) {
-      error.status = 500;
-      throw error;
-    }
-
-    res.json({ message: "Account successfully deleted" });
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * @swagger
- * /api/test-webhook:
- *   post:
- *     summary: Send a test ping to a webhook URL
- *     tags: [Merchants]
- *     security:
- *       - ApiKeyAuth: []
- */
-router.post("/test-webhook", validateRequest({ body: testWebhookSchema }), async (req, res, next) => {
-  try {
-    const { webhook_url } = req.body;
-
-    const payload = getPayloadForVersion(
-      req.merchant.webhook_version || "v1",
-      "ping",
-      {
-        merchant_id: req.merchant.id,
-        timestamp: new Date().toISOString(),
+        const { error } = await supabase
+          .from("merchants")
+          .update({ api_key: newApiKey })
+          .eq("id", req.merchant.id);
+    
+        if (error) {
+          error.status = 500;
+          throw error;
+        }
+    
+        res.json({
+          api_key: newApiKey
+        });
+      } catch (err) {
+        next(err);
       }
-    );
-
-    const result = await sendWebhook(
-      webhook_url,
-      payload,
-      req.merchant.webhook_secret || null
-    );
-
-    res.json({
-      ok: result.ok,
-      status: result.status ?? null,
-      body: result.body ?? null,
-      signed: result.signed,
     });
-  } catch (err) {
-    next(err);
-  }
-});
 
-/**
- * @swagger
- * /api/webhook-settings:
- *   get:
- *     summary: Retrieve current webhook URL and masked webhook secret
- *     tags: [Merchants]
- *     security:
- *       - ApiKeyAuth: []
- */
-router.get("/webhook-settings", async (req, res, next) => {
-  try {
-    const result = await merchantService.getWebhookSettings(req.merchant.id);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
+    /**
+     * @swagger
+     * /api/merchants/rotate-api-key:
+     *   post:
+     *     summary: Rotate API key with overlap period for seamless migration
+     *     tags: [Merchants]
+     *     security:
+     *       - ApiKeyAuth: []
+     *     requestBody:
+     *       required: false
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               grace_period_hours:
+     *                 type: integer
+     *                 description: Hours the old key remains valid (0-168, default 24)
+     *                 default: 24
+     *     responses:
+     *       200:
+     *         description: New API key generated with old key overlap period
+     */
+    router.post("/merchants/rotate-api-key", requireApiKeyAuth(), async (req, res, next) => {
+      try {
+        const body = rotateApiKeySchema.parse(req.body || {});
+        const result = await merchantService.rotateApiKey(
+          req.merchant.id,
+          body.grace_period_hours
+        );
+        res.json(result);
+      } catch (err) {
+        next(err);
+      }
+    });
 
-/**
- * @swagger
- * /api/webhook-settings:
- *   put:
- *     summary: Update the merchant's webhook endpoint URL
- *     tags: [Merchants]
- *     security:
- *       - ApiKeyAuth: []
- */
-router.put("/webhook-settings", validateRequest({ body: webhookSettingsSchema }), async (req, res, next) => {
-  try {
-    const body = req.body;
+    /**
+     * @swagger
+     * /api/merchants/api-key-status:
+     *   get:
+     *     summary: Get current API key status and expiry information
+     *     tags: [Merchants]
+     *     security:
+     *       - ApiKeyAuth: []
+     *     responses:
+     *       200:
+     *         description: API key status information
+     */
+    router.get("/merchants/api-key-status", requireApiKeyAuth(), async (req, res, next) => {
+      try {
+        const result = await merchantService.getApiKeyStatus(req.merchant.id);
+        res.json(result);
+      } catch (err) {
+        next(err);
+      }
+    });
 
-    const { data, error } = await supabase
-      .from("merchants")
-      .update({ webhook_url: body.webhook_url || null })
-      .eq("id", req.merchant.id)
-      .select("webhook_url")
-      .single();
+    /**
+     * @swagger
+     * /api/merchants/set-api-key-expiry:
+     *   put:
+     *     summary: Set an expiry date for the current API key
+     *     tags: [Merchants]
+     *     security:
+     *       - ApiKeyAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - expires_at
+     *             properties:
+     *               expires_at:
+     *                 type: string
+     *                 format: date-time
+     *                 description: ISO 8601 datetime when the API key expires
+     */
+    router.put("/merchants/set-api-key-expiry", requireApiKeyAuth(), async (req, res, next) => {
+      try {
+        const body = setApiKeyExpirySchema.parse(req.body);
+        const result = await merchantService.setApiKeyExpiry(
+          req.merchant.id,
+          body.expires_at
+        );
+        res.json(result);
+      } catch (err) {
+        next(err);
+      }
+    });
 
-    if (error) {
-      error.status = 500;
-      throw error;
-    }
-
-    res.json({ webhook_url: data.webhook_url || "" });
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * @swagger
- * /api/regenerate-webhook-secret:
- *   post:
- *     summary: Regenerate the merchant's webhook signing secret
- *     tags: [Merchants]
- *     security:
- *       - ApiKeyAuth: []
- */
-router.post("/regenerate-webhook-secret", async (req, res, next) => {
-  try {
-    const newSecret = `whsec_${randomBytes(24).toString("hex")}`;
-
-    const { error } = await supabase
-      .from("merchants")
-      .update({ webhook_secret: newSecret })
-      .eq("id", req.merchant.id);
-
-    if (month && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
-      return res.status(400).json({
-        error: "month must be in YYYY-MM format",
-      });
-    }
-
-    res.json({ webhook_secret: newSecret });
-    res.json({ api_key: newApiKey });
-  } catch (err) {
-    next(err);
-  }
-});
 
   return router;
 }
+
 
 export default createMerchantsRouter;

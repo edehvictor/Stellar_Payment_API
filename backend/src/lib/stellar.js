@@ -40,7 +40,7 @@ export function validateMemo(memo, memoType) {
       if (!/^\d+$/.test(memo)) {
         return {
           valid: false,
-          error: "ID memo must be a numeric string containing only digits",
+          error: "memo must be a valid unsigned 64-bit integer when memo_type is id",
         };
       }
       try {
@@ -60,12 +60,33 @@ export function validateMemo(memo, memoType) {
       return { valid: true };
 
     case "hash":
-    case "return":
-      // HASH and RETURN memos must be exactly 32 bytes (64 hex characters)
+      // HASH memos must be exactly 32 bytes (64 hex characters)
       if (!/^[0-9a-fA-F]{64}$/.test(memo)) {
         return {
           valid: false,
-          error: `${normalizedType.toUpperCase()} memo must be exactly 64 hexadecimal characters (32 bytes)`,
+          error: "memo must be a 32-byte hex string (64 characters) when memo_type is hash",
+        };
+      }
+      return { valid: true };
+
+    case "return":
+      // RETURN memos can be either 32-byte hex or a valid unsigned 64-bit ID
+      const isHex = /^[0-9a-fA-F]{64}$/.test(memo);
+      let isValidId = false;
+
+      if (/^\d+$/.test(memo)) {
+        try {
+          const val = BigInt(memo);
+          isValidId = val >= 0n && val <= 18446744073709551615n;
+        } catch {
+          isValidId = false;
+        }
+      }
+
+      if (!isHex && !isValidId) {
+        return {
+          valid: false,
+          error: "memo must be a valid unsigned 64-bit integer or a 32-byte hex string (64 characters) when memo_type is return",
         };
       }
       return { valid: true };

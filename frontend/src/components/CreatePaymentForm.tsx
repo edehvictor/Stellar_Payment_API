@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -13,6 +13,7 @@ import {
   useMerchantHydrated,
   useMerchantTrustedAddresses,
 } from "@/lib/merchant-store";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -277,18 +278,19 @@ function SuccessCard({ created, onReset, t }: SuccessCardProps) {
 
 export default function CreatePaymentForm() {
   const t = useTranslations("createPaymentForm");
-  const [amount, setAmount] = useState("");
-  const [asset, setAsset] = useState<"XLM" | "USDC">("XLM");
-  const [recipient, setRecipient] = useState("");
-  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useLocalStorage("payment_amount", "");
+  const [asset, setAsset] = useLocalStorage<"XLM" | "USDC">(
+    "payment_asset",
+    "XLM",
+  );
+  const [recipient, setRecipient] = useLocalStorage("payment_recipient", "");
+  const [description, setDescription] = useLocalStorage(
+    "payment_description",
+    "",
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedPayment | null>(null);
-  
-  const [useSessionBranding, setUseSessionBranding] = useState(false);
-  const [branding, setBranding] = useState(DEFAULT_BRANDING);
-  const [selectedTrustedAddress, setSelectedTrustedAddress] = useState("");
-
   const apiKey = useMerchantApiKey();
   const hydrated = useMerchantHydrated();
   const trustedAddresses = useMerchantTrustedAddresses();
@@ -304,21 +306,6 @@ export default function CreatePaymentForm() {
     "payment_trusted_address",
     "",
   );
-
-  // localStorage-backed state (preserved from original)
-  const [useSessionBranding, setUseSessionBranding] = useLocalStorage(
-    "payment_use_branding",
-    false
-  );
-  const [branding, setBranding] = useLocalStorage(
-    "payment_branding",
-    DEFAULT_BRANDING
-  );
-  const [selectedTrustedAddress, setSelectedTrustedAddress] = useLocalStorage(
-    "payment_trusted_address",
-    ""
-  );
-
   useHydrateMerchantStore();
 
   // ── Rate-limit countdown ──────────────────────────────────
@@ -374,7 +361,7 @@ export default function CreatePaymentForm() {
       if (description.trim()) body.description = description.trim();
       if (useSessionBranding) {
         for (const [key, color] of Object.entries(branding)) {
-          if (!HEX_COLOR_REGEX.test(color)) {
+          if (!HEX_COLOR_REGEX.test(color as string)) {
             setError(t("invalidHexColor", { field: key }));
             setLoading(false);
             return;
@@ -533,11 +520,10 @@ export default function CreatePaymentForm() {
                     type="button"
                     onClick={() => setAsset(a)}
                     aria-pressed={asset === a}
-                    className={`flex-1 rounded-xl border py-2.5 text-sm font-medium transition-all ${
-                      asset === a
-                        ? "border-mint/50 bg-mint/10 text-mint"
-                        : "border-white/10 bg-white/5 text-slate-400 hover:border-white/20 hover:text-white"
-                    }`}
+                    className={`flex-1 rounded-xl border py-2.5 text-sm font-medium transition-all ${asset === a
+                      ? "border-mint/50 bg-mint/10 text-mint"
+                      : "border-white/10 bg-white/5 text-slate-400 hover:border-white/20 hover:text-white"
+                      }`}
                   >
                     {a}
                   </button>
@@ -635,11 +621,10 @@ export default function CreatePaymentForm() {
                 <button
                   type="button"
                   onClick={() => setUseSessionBranding((v) => !v)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    useSessionBranding
-                      ? "bg-mint text-black"
-                      : "border border-white/20 text-slate-300"
-                  }`}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${useSessionBranding
+                    ? "bg-mint text-black"
+                    : "border border-white/20 text-slate-300"
+                    }`}
                 >
                   {useSessionBranding ? t("enabled") : t("disabled")}
                 </button>
