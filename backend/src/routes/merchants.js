@@ -13,6 +13,14 @@ const rotateWebhookSecretSchema = z.object({
   grace_period_hours: z.number().int().min(0).max(168).optional(),
 });
 
+const rotateApiKeySchema = z.object({
+  grace_period_hours: z.number().int().min(0).max(168).optional(),
+});
+
+const setApiKeyExpirySchema = z.object({
+  expires_at: z.string().datetime({ offset: true }).or(z.string().datetime()),
+});
+
 /**
  * @swagger
  * /api/register-merchant:
@@ -46,6 +54,98 @@ router.post("/register-merchant", async (req, res, next) => {
 router.post("/rotate-key", async (req, res, next) => {
   try {
     const result = await merchantService.rotateApiKey(req.merchant.id);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/merchants/rotate-api-key:
+ *   post:
+ *     summary: Rotate API key with overlap period for seamless migration
+ *     tags: [Merchants]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               grace_period_hours:
+ *                 type: integer
+ *                 description: Hours the old key remains valid (0-168, default 24)
+ *                 default: 24
+ *     responses:
+ *       200:
+ *         description: New API key generated with old key overlap period
+ */
+router.post("/merchants/rotate-api-key", async (req, res, next) => {
+  try {
+    const body = rotateApiKeySchema.parse(req.body || {});
+    const result = await merchantService.rotateApiKey(
+      req.merchant.id,
+      body.grace_period_hours
+    );
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/merchants/api-key-status:
+ *   get:
+ *     summary: Get current API key status and expiry information
+ *     tags: [Merchants]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: API key status information
+ */
+router.get("/merchants/api-key-status", async (req, res, next) => {
+  try {
+    const result = await merchantService.getApiKeyStatus(req.merchant.id);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/merchants/set-api-key-expiry:
+ *   put:
+ *     summary: Set an expiry date for the current API key
+ *     tags: [Merchants]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - expires_at
+ *             properties:
+ *               expires_at:
+ *                 type: string
+ *                 format: date-time
+ *                 description: ISO 8601 datetime when the API key expires
+ */
+router.put("/merchants/set-api-key-expiry", async (req, res, next) => {
+  try {
+    const body = setApiKeyExpirySchema.parse(req.body);
+    const result = await merchantService.setApiKeyExpiry(
+      req.merchant.id,
+      body.expires_at
+    );
     res.json(result);
   } catch (err) {
     next(err);
