@@ -7,6 +7,7 @@ import LocaleSwitcher from "@/components/LocaleSwitcher";
 import NotificationCenter from "@/components/NotificationCenter";
 import PaymentToastListener from "@/components/PaymentToastListener";
 import Sidebar from "@/components/Sidebar";
+import SupportOverlay from "@/components/SupportOverlay";
 import { useHydrateMerchantStore } from "@/lib/merchant-store";
 import { motion } from "framer-motion";
 
@@ -76,6 +77,7 @@ export default function AuthenticatedLayout({
             </motion.section>
           </div>
         </main>
+        <SupportOverlay />
       </div>
     </AuthGuard>
   );
