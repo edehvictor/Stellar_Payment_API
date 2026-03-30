@@ -14,7 +14,7 @@ import {
 import { useDisplayPreferences } from "@/lib/display-preferences";
 import WebhookHealthIndicator from "@/components/WebhookHealthIndicator";
 import DangerZone from "@/components/DangerZone";
-import EmailReceiptPreview from "@/components/EmailReceiptPreview";
+import { EmailReceiptPreview } from "@/components/EmailReceiptPreview";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const HEX_COLOR_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;

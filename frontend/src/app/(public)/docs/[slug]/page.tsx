@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { MDXRemote } from "next-mdx-remote";
+import MDXWrapper from "@/components/MDXWrapper";
 import { docsManifest } from "@/lib/docs-manifest";
 import { getDocBySlug } from "@/lib/docs";
 
@@ -52,7 +52,7 @@ export default async function DocPage({
       </header>
 
       <div className="docs-prose">
-        <MDXRemote {...doc.serialized} />
+        <MDXWrapper serialized={doc.serialized} />
       </div>
     </article>
   );
