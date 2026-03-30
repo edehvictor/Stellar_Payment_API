@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import CopyButton from "@/components/CopyButton";
 import { useMerchantApiKey } from "@/lib/merchant-store";
+import ApiUsageChart from "@/components/ApiUsageChart";
 
 type SandboxExample = {
   id: string;
@@ -219,6 +220,8 @@ export default function DevSandbox() {
           for your app.
         </p>
       </div>
+
+      <ApiUsageChart />
 
       <div className="grid gap-4 rounded-xl border border-white/10 bg-black/20 p-4 lg:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-xs uppercase tracking-wider text-slate-400">
