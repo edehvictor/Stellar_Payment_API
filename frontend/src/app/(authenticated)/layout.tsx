@@ -22,15 +22,15 @@ export default function AuthenticatedLayout({
 
   return (
     <AuthGuard>
-      <div className="dashboard-shell flex min-h-screen overflow-x-hidden bg-white text-[#0A0A0A]">
+      <div className="dashboard-shell flex h-screen overflow-hidden bg-white text-[#0A0A0A]">
         <Sidebar
           mobileOpen={mobileSidebarOpen}
           onMobileOpenChange={setMobileSidebarOpen}
         />
         <PaymentToastListener />
 
-        <main className="min-w-0 flex-1 overflow-x-hidden flex flex-col">
-          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center border-b border-[#E8E8E8] bg-white px-8">
+        <main className="min-w-0 flex-1 flex flex-col overflow-hidden">
+          <header className="shrink-0 flex h-16 items-center border-b border-[#E8E8E8] bg-white px-8 z-30">
             <div className="flex w-full items-center justify-between">
               <div className="flex items-center gap-4">
                 <button
@@ -56,16 +56,17 @@ export default function AuthenticatedLayout({
             </div>
           </header>
 
-          <div className="mx-auto w-full max-w-[1280px] p-8 lg:p-12">
-
-            <motion.section
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className="min-w-0 pb-10"
-            >
-              {children}
-            </motion.section>
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto w-full max-w-[1280px] p-8 lg:p-12">
+              <motion.section
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="min-w-0"
+              >
+                {children}
+              </motion.section>
+            </div>
           </div>
         </main>
         <SupportOverlay />

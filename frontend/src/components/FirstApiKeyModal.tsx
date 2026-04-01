@@ -69,7 +69,7 @@ export default function FirstApiKeyModal({ isOpen, onClose }: FirstApiKeyModalPr
 
             <div className="flex flex-col gap-3 pt-2">
               <a
-                href="/api-docs"
+                href="/docs"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-medium text-white transition-all hover:bg-white/10"

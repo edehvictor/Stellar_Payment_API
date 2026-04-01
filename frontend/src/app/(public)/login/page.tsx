@@ -38,7 +38,7 @@ export default function LoginPage() {
             <Link href="#" className="hover:text-[#0A0A0A] transition-colors">Help Center</Link>
          </div>
           <div className="text-[#6B6B6B] uppercase tracking-widest">
-            © 2024 PLUTO. THE HUB FOR MODERN COMMERCE.
+            © {new Date().getFullYear()} PLUTO. THE HUB FOR MODERN COMMERCE.
           </div>
       </footer>
     </main>

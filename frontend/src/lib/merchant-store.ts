@@ -277,8 +277,10 @@ export function useMerchantLogout() {
 }
 
 export function useMerchantTrustedAddresses() {
-  return useMerchantStore((state) => state.merchant?.trusted_addresses || []);
+  return useMerchantStore((state) => state.merchant?.trusted_addresses ?? null) ?? EMPTY_ADDRESSES;
 }
+
+const EMPTY_ADDRESSES: TrustedAddress[] = [];
 
 export function useAddTrustedAddress() {
   return useMerchantStore((state) => state.addTrustedAddress);
