@@ -13,12 +13,11 @@ import metricsRouter from "./routes/metrics.js";
 import authRouter from "./routes/auth.js";
 import auditRouter from "./routes/audit.js";
 import { requireApiKeyAuth } from "./lib/auth.js";
-import { isHorizonReachable } from "./lib/stellar.js";
-import { supabase } from "./lib/supabase.js";
 import { pool, closePool } from "./lib/db.js";
 import { validateEnvironmentVariables } from "./lib/env-validation.js";
 import { formatZodError } from "./lib/request-schemas.js";
 import { idempotencyMiddleware } from "./lib/idempotency.js";
+import { probeHealth } from "./lib/health.js";
 import { closeRedisClient, connectRedisClient } from "./lib/redis.js";
 import {
   createRedisRateLimitStore,
@@ -82,45 +81,33 @@ app.use(express.json({ limit: "1mb" }));
 app.use(morgan(":request-id :method :url :status :response-time ms"));
 
 app.get("/health", async (req, res) => {
-  try {
-    const [dbResult, horizonReachable] = await Promise.all([
-      supabase.from("merchants").select("id").limit(1),
-      isHorizonReachable(),
-    ]);
+  const { database, horizon } = await probeHealth();
 
-    const { error } = dbResult;
-
-    if (error) {
-      return res.status(503).json({
-        ok: false,
-        service: "stellar-payment-api",
-        error: "Database unavailable",
-        horizon_reachable: horizonReachable,
-      });
-    }
-
-    if (!horizonReachable) {
-      return res.status(503).json({
-        ok: false,
-        service: "stellar-payment-api",
-        error: "Horizon unavailable",
-        horizon_reachable: false,
-      });
-    }
-
-    res.json({
-      ok: true,
-      service: "stellar-payment-api",
-      horizon_reachable: true,
-    });
-  } catch {
+  if (!database.ok) {
     res.status(503).json({
       ok: false,
       service: "stellar-payment-api",
-      error: "Health check failed",
+      error: "Database unavailable",
+      horizon_reachable: horizon.ok,
+    });
+    return;
+  }
+
+  if (!horizon.ok) {
+    res.status(503).json({
+      ok: false,
+      service: "stellar-payment-api",
+      error: "Horizon unavailable",
       horizon_reachable: false,
     });
+    return;
   }
+
+  res.json({
+    ok: true,
+    service: "stellar-payment-api",
+    horizon_reachable: true,
+  });
 });
 
 app.use("/api/create-payment", requireApiKeyAuth());

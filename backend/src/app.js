@@ -19,9 +19,8 @@ import x402Router from "./routes/x402.js";
 import authRouter from "./routes/auth.js";
 
 import { requireApiKeyAuth } from "./lib/auth.js";
-import { isHorizonReachable } from "./lib/stellar.js";
-import { supabase } from "./lib/supabase.js";
 import { pool } from "./lib/db.js";
+import { probeHealth } from "./lib/health.js";
 import { x402Middleware } from "./middleware/x402.js";
 
 import { idempotencyMiddleware } from "./lib/idempotency.js";
@@ -203,18 +202,15 @@ export async function createApp({ redisClient }) {
    *                   type: string
    *                 horizon_reachable:
    *                   type: boolean
-   */
+  */
   app.get("/health", async (req, res) => {
-    const [dbResult, horizonReachable] = await Promise.allSettled([
-      supabase.from("merchants").select("id").limit(1),
-      isHorizonReachable(),
-    ]);
+    const { database, horizon } = await probeHealth();
 
-    const dbOk = dbResult.status === "fulfilled" && !dbResult.value?.error;
-    if (!dbOk) {
-      console.error("Health DB error:", JSON.stringify(dbResult.reason || dbResult.value?.error));
+    if (!database.ok) {
+      console.error("Health DB error:", database.error);
     }
-    const horizonOk = horizonReachable.status === "fulfilled" && horizonReachable.value === true;
+    const dbOk = database.ok;
+    const horizonOk = horizon.ok;
 
     const status = dbOk && horizonOk ? 200 : 503;
 
