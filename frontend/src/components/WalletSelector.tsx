@@ -12,7 +12,6 @@ interface WalletSelectorProps {
   onConnected: () => void;
 }
 
-// Freighter icon SVG
 function FreighterIcon() {
   return (
     <svg viewBox="0 0 32 32" className="h-5 w-5" fill="none">
@@ -45,7 +44,6 @@ export default function WalletSelector({ networkPassphrase, onConnected }: Walle
   const t = useTranslations("walletSelector");
   const { providers, activeProvider, selectProvider } = useWallet();
 
-  // Track which wallets are installed (not just allowed)
   const [installed, setInstalled] = useState<Record<string, boolean>>({});
   const [connecting, setConnecting] = useState<string | null>(null);
   const [wcUri, setWcUri] = useState<string | null>(null);
@@ -55,25 +53,71 @@ export default function WalletSelector({ networkPassphrase, onConnected }: Walle
   useEffect(() => {
     let cancelled = false;
     Promise.all(
-      providers.map(async (p) => {
-        const ok = await p.isAvailable();
-        return [p.id, ok] as const;
+      providers.map(async (provider) => {
+        const ok = await provider.isAvailable();
+        return [provider.id, ok] as const;
       }),
     ).then((entries) => {
       if (!cancelled) setInstalled(Object.fromEntries(entries));
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [providers]);
 
   if (activeProvider) return null;
 
+  function getFriendlyErrorMessage(id: string, err: unknown) {
+    const message = err instanceof Error ? err.message : String(err ?? "");
+    const normalized = message.toLowerCase();
+
+    if (
+      normalized.includes("4001") ||
+      normalized.includes("reject") ||
+      normalized.includes("declin") ||
+      normalized.includes("denied") ||
+      normalized.includes("canceled") ||
+      normalized.includes("cancelled")
+    ) {
+      return t("userRejected");
+    }
+
+    if (
+      normalized.includes("project_id") ||
+      normalized.includes("project id") ||
+      normalized.includes("walletconnect is disabled") ||
+      normalized.includes("pairing uri")
+    ) {
+      return t("walletConnectUnavailable");
+    }
+
+    if (
+      normalized.includes("not installed") ||
+      normalized.includes("not found") ||
+      normalized.includes("extension")
+    ) {
+      return t("extensionNotFound");
+    }
+
+    if (
+      normalized.includes("no stellar accounts") ||
+      normalized.includes("public key") ||
+      normalized.includes("session not established")
+    ) {
+      return t("noAccountFound");
+    }
+
+    return id === "walletconnect" ? t("walletConnectFailed") : t("connectionFailed");
+  }
+
   async function handleSelect(id: string) {
     setConnectError(null);
+    setWcError(null);
+    setWcUri(null);
     setConnecting(id);
 
     try {
       if (id === "walletconnect") {
-        setWcError(null);
         const { uri, approval } = await connectWalletConnect(networkPassphrase);
         setWcUri(uri);
         await approval;
@@ -83,11 +127,9 @@ export default function WalletSelector({ networkPassphrase, onConnected }: Walle
         return;
       }
 
-      // For Freighter — call getPublicKey directly which triggers requestAccess popup
       if (id === "freighter") {
-        const provider = providers.find(p => p.id === "freighter");
+        const provider = providers.find((entry) => entry.id === "freighter");
         if (!provider) throw new Error("Freighter provider not found");
-        // This triggers the Freighter popup
         await provider.getPublicKey();
         selectProvider(id);
         onConnected();
@@ -97,7 +139,7 @@ export default function WalletSelector({ networkPassphrase, onConnected }: Walle
       selectProvider(id);
       onConnected();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Connection failed";
+      const msg = getFriendlyErrorMessage(id, err);
       if (id === "walletconnect") {
         setWcError(msg);
         setWcUri(null);
@@ -113,54 +155,53 @@ export default function WalletSelector({ networkPassphrase, onConnected }: Walle
     <div className="flex flex-col gap-4">
       <div>
         <p className="text-sm font-bold text-white">{t("chooseWallet")}</p>
-        <p className="text-xs text-slate-400 mt-0.5">Connect your Stellar wallet to complete this payment.</p>
+        <p className="mt-0.5 text-xs text-slate-400">{t("description")}</p>
       </div>
 
       <div className="flex flex-col gap-3">
-        {providers.map((p) => {
-          const isWc = p.id === "walletconnect";
-          const isConnecting = connecting === p.id;
-          const isInstalled = installed[p.id] ?? false;
-          // WalletConnect needs a project ID; Freighter just needs to be installed
-          const isDisabled = isWc ? !isInstalled : false;
+        {providers.map((provider) => {
+          const isWc = provider.id === "walletconnect";
+          const isConnecting = connecting === provider.id;
+          const isInstalled = installed[provider.id] ?? false;
+          const isDisabled = !isInstalled;
 
           return (
             <button
-              key={p.id}
+              key={provider.id}
               type="button"
               disabled={isDisabled || connecting !== null}
-              onClick={() => handleSelect(p.id)}
+              onClick={() => handleSelect(provider.id)}
+              aria-busy={isConnecting}
               className="group relative flex h-16 w-full items-center gap-4 rounded-2xl border border-[#E8E8E8] bg-white px-5 text-left shadow-sm transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:border-[var(--pluto-400)] hover:shadow-[0_6px_22px_rgba(74,111,165,0.12)] active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pluto-300)] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {/* Icon */}
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#E8E8E8] bg-[#F9F9F9] transition-colors duration-200 group-hover:border-[var(--pluto-200)] group-hover:bg-[var(--pluto-50)]">
-                {ICONS[p.id] ?? (
+                {ICONS[provider.id] ?? (
                   <svg className="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
                 )}
               </div>
 
-              {/* Label */}
               <div className="flex flex-1 flex-col gap-0.5">
                 {isConnecting ? (
                   <span className="flex items-center gap-2 text-sm font-bold text-white">
                     <Spinner size="sm" />
-                    {isWc ? t("walletConnectWaiting") : "Connecting…"}
+                    {isWc ? t("walletConnectWaiting") : t("connecting")}
                   </span>
                 ) : (
                   <>
-                    <span className="text-sm font-bold text-white transition-colors group-hover:text-mint">{p.name}</span>
+                    <span className="text-sm font-bold text-white transition-colors group-hover:text-mint">{provider.name}</span>
                     <span className="text-[10px] font-medium text-slate-500">
                       {isDisabled
-                        ? (isWc ? t("noProjectId") : t("notInstalled"))
-                        : SUBTITLES[p.id] ?? "Click to connect"}
+                        ? isWc
+                          ? t("noProjectId")
+                          : t("notInstalled")
+                        : SUBTITLES[provider.id] ?? t("tapToConnect")}
                     </span>
                   </>
                 )}
               </div>
 
-              {/* Arrow */}
               {!isConnecting && !isDisabled && (
                 <svg className="h-4 w-4 shrink-0 text-[#C0C0C0] transition-colors duration-200 group-hover:text-[var(--pluto-500)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -171,32 +212,30 @@ export default function WalletSelector({ networkPassphrase, onConnected }: Walle
         })}
       </div>
 
-      {/* WalletConnect QR */}
       {wcUri && (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-6" aria-live="polite">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{t("scanTitle")}</p>
           <div className="rounded-xl bg-white p-3 shadow-[0_0_20px_rgba(255,255,255,0.05)]">
             <QRCodeSVG value={wcUri} size={200} level="M" fgColor="#0A0A0A" bgColor="#ffffff" />
           </div>
-          <p className="text-[10px] text-slate-500 text-center">Scan with Freighter mobile or any WalletConnect-compatible wallet</p>
+          <p className="text-center text-[10px] text-slate-500">{t("scanDescription")}</p>
         </div>
       )}
 
       {(wcError || connectError) && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-center text-sm text-red-400">
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-center text-sm text-red-400" role="alert" aria-live="polite">
           {wcError || connectError}
         </div>
       )}
 
-      {/* Freighter install prompt */}
-      {!installed["freighter"] && (
+      {!installed.freighter && (
         <a
           href="https://freighter.app"
           target="_blank"
           rel="noopener noreferrer"
           className="text-center text-[10px] font-bold uppercase tracking-widest text-[var(--pluto-500)] transition-colors duration-150 hover:text-[var(--pluto-700)]"
         >
-          Don&apos;t have Freighter? Install it →
+          Don&apos;t have Freighter? Install it -&gt;
         </a>
       )}
     </div>

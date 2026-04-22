@@ -18,6 +18,13 @@ vi.mock("../../src/lib/stellar.js", () => ({
   isHorizonReachable: vi.fn(async () => true),
 }));
 
+vi.mock("../../src/lib/health.js", () => ({
+  probeHealth: vi.fn(async () => ({
+    database: { ok: true, error: null },
+    horizon: { ok: true, error: null },
+  })),
+}));
+
 vi.mock("../../src/lib/supabase.js", () => {
   return {
     supabase: {

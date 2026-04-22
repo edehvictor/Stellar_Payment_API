@@ -343,17 +343,30 @@ export default function PaymentMetrics({
     });
   };
 
-  if (loading || !hydrated) {
-    return (
-      <div className="animate-pulse space-y-4">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="h-24 rounded-xl bg-white/5" />
-          <div className="h-24 rounded-xl bg-white/5" />
-          <div className="h-24 rounded-xl bg-white/5" />
-        </div>
-        <div className="h-80 w-full rounded-xl bg-white/5" />
-      </div>
-    );
+  const handleExport = async (
+    format: ExportFormat,
+    containerRef: RefObject<HTMLDivElement>
+  ) => {
+    setExporting(true);
+
+    try {
+      await exportChart(
+        containerRef,
+        format,
+        `multi-asset-volume-${range.toLowerCase()}`
+      );
+      toast.success(t("exportSuccess", { format: format.toUpperCase() }));
+    } catch (exportError) {
+      const message =
+        exportError instanceof Error ? exportError.message : t("exportFailed");
+      toast.error(message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (showSkeleton || loading || !hydrated) {
+    return <MetricsSkeleton />;
   }
 
   if (error) {
