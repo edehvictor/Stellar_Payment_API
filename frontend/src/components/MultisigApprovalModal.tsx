@@ -167,7 +167,14 @@ export default function MultisigApprovalModal({
               </span>
               <span className="text-xs text-slate-400">{Math.round(progress)}%</span>
             </div>
-            <div className="w-full bg-white/10 rounded-full h-2">
+            <div 
+              className="w-full bg-white/10 rounded-full h-2"
+              role="progressbar"
+              aria-valuenow={Math.round(progress)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Signature progress"
+            >
               <div 
                 className="bg-mint h-2 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
@@ -243,8 +250,8 @@ export default function MultisigApprovalModal({
   );
 
   const ProcessingStep = () => (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="relative mb-6">
+    <div className="flex flex-col items-center justify-center py-12 text-center" role="status">
+      <div className="relative mb-6" aria-hidden="true">
         <div className="w-16 h-16 border-4 border-mint border-t-transparent rounded-full animate-spin" />
         <div className="absolute inset-0 w-16 h-16 border-4 border-mint/20 rounded-full animate-ping" />
       </div>
@@ -289,7 +296,7 @@ export default function MultisigApprovalModal({
   );
 
   const ErrorStep = () => (
-    <div className="text-center space-y-6">
+    <div className="text-center space-y-6" role="alert">
       <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto">
         <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -385,7 +392,7 @@ export default function MultisigApprovalModal({
             </div>
 
             {/* Content */}
-            <div className="p-6 max-h-[70vh] overflow-y-auto">
+            <div className="p-6 max-h-[70vh] overflow-y-auto" aria-live="polite">
               {isExpired ? (
                 <div className="text-center space-y-6">
                   <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto">
@@ -413,7 +420,7 @@ export default function MultisigApprovalModal({
 
             {/* Error Display */}
             {error && currentStep !== "error" && (
-              <div className="mx-6 mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+              <div className="mx-6 mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4" role="alert">
                 <div className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />

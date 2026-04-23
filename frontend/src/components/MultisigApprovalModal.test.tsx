@@ -340,6 +340,20 @@ describe("MultisigApprovalModal Component", () => {
       expect(modal).toHaveAttribute("aria-labelledby", "multisig-modal-title");
     });
 
+    it("has proper roles and live regions for screen readers", () => {
+      renderWithProvider();
+
+      // Content area has polite aria-live
+      const contentArea = screen.getByText("Multi-Signature Approval").parentElement?.nextElementSibling;
+      expect(contentArea).toHaveAttribute("aria-live", "polite");
+
+      // Progress bar role
+      const progressBar = screen.getByRole("progressbar");
+      expect(progressBar).toHaveAttribute("aria-valuenow", "0");
+      expect(progressBar).toHaveAttribute("aria-valuemin", "0");
+      expect(progressBar).toHaveAttribute("aria-valuemax", "100");
+    });
+
     it("has proper heading structure", () => {
       renderWithProvider();
 

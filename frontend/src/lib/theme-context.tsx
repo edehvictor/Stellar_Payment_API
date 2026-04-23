@@ -45,8 +45,10 @@ export function ThemeProvider({
   }, []);
 
   const setTheme = useCallback((newTheme: ThemeMode) => {
+    const previousTheme = theme;
+    const previousResolved = resolvedTheme;
+
     try {
-      setIsLoading(true);
       setThemeState(newTheme);
       
       if (typeof globalThis !== "undefined" && globalThis.window) {
@@ -69,13 +71,21 @@ export function ThemeProvider({
       
       setError(null);
     } catch (err) {
+      // Revert optimistic update
+      setThemeState(previousTheme !== undefined ? previousTheme : defaultTheme);
+      if (previousResolved) {
+        setResolvedTheme(previousResolved);
+        if (typeof globalThis !== "undefined" && globalThis.window) {
+          globalThis.document.documentElement.classList.remove("light", "dark");
+          globalThis.document.documentElement.classList.add(previousResolved);
+        }
+      }
+      
       const errorMessage = err instanceof Error ? err.message : "Failed to set theme";
       setError(errorMessage);
       console.error("Theme setting error:", err);
-    } finally {
-      setIsLoading(false);
     }
-  }, [storageKey]);
+  }, [storageKey, theme, resolvedTheme, defaultTheme]);
 
   const toggleTheme = useCallback(() => {
     const themes: ThemeMode[] = ["light", "dark", "system"];

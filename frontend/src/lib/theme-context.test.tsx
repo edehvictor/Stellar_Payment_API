@@ -193,13 +193,13 @@ describe("Theme Context", () => {
   });
 
   describe("Error Handling", () => {
-    it("handles localStorage errors gracefully", async () => {
+    it("handles localStorage errors gracefully and reverts optimistic updates", async () => {
       const mockSetItem = globalThis.localStorage.setItem as jest.Mock;
       mockSetItem.mockImplementation(() => {
         throw new Error("Storage error");
       });
 
-      renderWithThemeProvider();
+      renderWithThemeProvider({ defaultTheme: "system" });
 
       await waitFor(() => {
         expect(screen.getByTestId("is-mounted")).toHaveTextContent("true");
@@ -209,6 +209,8 @@ describe("Theme Context", () => {
 
       await waitFor(() => {
         expect(screen.getByTestId("error")).toHaveTextContent("Storage error");
+        // Theme should be reverted to the previous state (system)
+        expect(screen.getByTestId("theme")).toHaveTextContent("system");
       });
     });
 

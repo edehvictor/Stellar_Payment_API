@@ -122,6 +122,8 @@ export function MultisigProvider({ children, networkPassphrase }: MultisigProvid
       return;
     }
 
+    const previousTransaction = { ...transaction, signers: [...transaction.signers] };
+
     try {
       setIsLoading(true);
       clearError();
@@ -135,6 +137,12 @@ export function MultisigProvider({ children, networkPassphrase }: MultisigProvid
       if (signer.hasSigned) {
         throw new Error("Signer has already signed");
       }
+
+      // Optimistic update
+      const optimisticSigners = transaction.signers.map(s => 
+        s.id === signerId ? { ...s, hasSigned: true } : s
+      );
+      setTransactionSafe({ ...transaction, signers: optimisticSigners });
 
       // Simulate signing process (in real implementation, this would interact with wallet)
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -164,6 +172,8 @@ export function MultisigProvider({ children, networkPassphrase }: MultisigProvid
       }
 
     } catch (err) {
+      // Revert optimistic update
+      setTransactionSafe(previousTransaction);
       const errorMessage = err instanceof Error ? err.message : "Failed to sign transaction";
       setError(errorMessage);
       console.error("Signing error:", err);
