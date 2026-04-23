@@ -165,24 +165,36 @@ export default function ActivityFeed() {
         </div>
       </div>
 
+      {/* ── Mobile card list (visible below sm breakpoint) ── */}
       <div className="space-y-3 p-4 sm:hidden">
         {payments.map((payment, i) => (
           <div
             key={payment.id}
-            className={`rounded-lg border p-3 ${i % 2 === 0 ? "border-[#E8E8E8] bg-white" : "border-[#ECECEC] bg-[#F9F9F9]"}`}
+            /* Hover: lift with Pluto-50 tint + left accent border.
+               Active: scale-down for tactile tap feedback.
+               Focus-visible: keyboard-navigable with Pluto-500 ring. */
+            tabIndex={0}
+            role="row"
+            aria-label={`Payment ${payment.description || "Transaction"} for ${formatAmount(payment.amount, locale, hideCents)} ${payment.asset}`}
+            className={`rounded-lg border p-3 outline-none
+              transition-all duration-200 ease-in-out
+              hover:border-l-2 hover:border-l-[var(--pluto-500)] hover:bg-[var(--pluto-50)] hover:shadow-sm
+              active:scale-[0.985] active:bg-[var(--pluto-100)]
+              focus-visible:ring-2 focus-visible:ring-[var(--pluto-500)] focus-visible:ring-offset-2
+              cursor-pointer
+              ${i % 2 === 0 ? "border-[#E8E8E8] bg-white" : "border-[#ECECEC] bg-[#F9F9F9]"}`}
           >
             <div className="mb-2 flex items-start justify-between gap-3">
               <p className="truncate text-sm font-semibold text-[#0A0A0A]">
                 {payment.description || "Transaction"}
               </p>
               <div
-                className={`shrink-0 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-tight ${
-                  payment.status === "confirmed"
+                className={`shrink-0 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-tight ${payment.status === "confirmed"
                     ? "bg-[#0A0A0A] text-white"
                     : payment.status === "pending"
                       ? "bg-[#F5F5F5] text-[#6B6B6B] border border-[#E8E8E8]"
                       : "bg-red-50 text-red-600 border border-red-100"
-                }`}
+                  }`}
                 aria-label={`Status: ${payment.status}`}
               >
                 {payment.status}
@@ -227,18 +239,26 @@ export default function ActivityFeed() {
                 key={payment.id}
                 role="row"
                 tabIndex={0}
-                className={`group transition-all 150ms ease cursor-default hover:bg-[#F0F0F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#4a6fa5] ${i % 2 === 0 ? "bg-white" : "bg-[#F9F9F9]"}`}
+                /* Hover: Pluto-50 background tint + 2px Pluto-500 left accent border + subtle shadow.
+                   Active: 0.995 scale for tactile feedback on click/tap.
+                   Focus-visible: inset Pluto-500 ring for keyboard navigation.
+                   transition-all duration-200 corrects the previously broken "transition-all 150ms ease" syntax. */
+                className={`group cursor-pointer outline-none
+                  transition-all duration-200 ease-in-out
+                  hover:bg-[var(--pluto-50)] hover:shadow-sm hover:border-l-2 hover:border-l-[var(--pluto-500)]
+                  active:bg-[var(--pluto-100)] active:scale-[0.985]
+                  focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--pluto-500)]
+                  ${i % 2 === 0 ? "bg-white" : "bg-[#F9F9F9]"}`}
                 aria-label={`Payment ${payment.description || "Transaction"} for ${formatAmount(payment.amount, locale, hideCents)} ${payment.asset}`}
               >
                 <td className="px-6 py-4">
                   <div
-                    className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-tight ${
-                      payment.status === "confirmed"
+                    className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-tight ${payment.status === "confirmed"
                         ? "bg-[#0A0A0A] text-white"
                         : payment.status === "pending"
                           ? "bg-[#F5F5F5] text-[#6B6B6B] border border-[#E8E8E8]"
                           : "bg-red-50 text-red-600 border border-red-100"
-                    }`}
+                      }`}
                     aria-label={`Status: ${payment.status}`}
                   >
                     {payment.status}
