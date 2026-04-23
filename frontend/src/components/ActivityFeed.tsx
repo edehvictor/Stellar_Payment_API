@@ -121,7 +121,7 @@ export default function ActivityFeed() {
     return (
       <div className="space-y-4 animate-pulse">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-16 w-full rounded-lg bg-[#F5F5F5]" />
+          <div key={i} className="h-14 w-full rounded-lg bg-[#F5F5F5] sm:h-16" />
         ))}
       </div>
     );
@@ -137,17 +137,17 @@ export default function ActivityFeed() {
 
   if (payments.length === 0) {
     return (
-      <div className="rounded-lg border border-[#E8E8E8] bg-[#F9F9F9] p-16 text-center flex flex-col items-center justify-center">
-        <h3 className="text-xl font-bold text-[#0A0A0A] mb-3">
+      <div className="flex flex-col items-center justify-center rounded-lg border border-[#E8E8E8] bg-[#F9F9F9] p-8 text-center sm:p-16">
+        <h3 className="mb-3 text-lg font-bold text-[#0A0A0A] sm:text-xl">
           No activity detected
         </h3>
-        <p className="text-[#6B6B6B] max-w-sm mb-8 font-medium">
+        <p className="mb-8 max-w-sm text-sm font-medium text-[#6B6B6B] sm:text-base">
           Your live feed will populate here once you start receiving payments.
           Create a link to get started.
         </p>
         <Link
           href="/dashboard/create"
-          className="rounded-[6px] bg-[#0A0A0A] px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-[#222]"
+          className="w-full rounded-[6px] bg-[#0A0A0A] px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-[#222] sm:w-auto"
         >
           Create First Payment
         </Link>
@@ -157,14 +157,53 @@ export default function ActivityFeed() {
 
   return (
     <div className="rounded-lg border border-[#E8E8E8] bg-white overflow-hidden">
-      <div className="px-6 py-4 border-b border-[#E8E8E8] bg-[#0A0A0A] flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-[#E8E8E8] bg-[#0A0A0A] px-4 py-4 sm:px-6">
         <h3 className="font-semibold text-white text-sm">Live Activity Feed</h3>
         <div className="flex items-center gap-2 text-[10px] font-bold text-white/70 uppercase tracking-widest">
           <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
           Live
         </div>
       </div>
-      <div className="overflow-x-auto">
+
+      <div className="space-y-3 p-4 sm:hidden">
+        {payments.map((payment, i) => (
+          <div
+            key={payment.id}
+            className={`rounded-lg border p-3 ${i % 2 === 0 ? "border-[#E8E8E8] bg-white" : "border-[#ECECEC] bg-[#F9F9F9]"}`}
+          >
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <p className="truncate text-sm font-semibold text-[#0A0A0A]">
+                {payment.description || "Transaction"}
+              </p>
+              <div
+                className={`shrink-0 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-tight ${
+                  payment.status === "confirmed"
+                    ? "bg-[#0A0A0A] text-white"
+                    : payment.status === "pending"
+                      ? "bg-[#F5F5F5] text-[#6B6B6B] border border-[#E8E8E8]"
+                      : "bg-red-50 text-red-600 border border-red-100"
+                }`}
+                aria-label={`Status: ${payment.status}`}
+              >
+                {payment.status}
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <time
+                className="text-[11px] font-medium text-[#6B6B6B]"
+                dateTime={payment.created_at}
+              >
+                {new Date(payment.created_at).toLocaleDateString()}
+              </time>
+              <p className="text-right text-sm font-bold text-[#0A0A0A]">
+                {formatAmount(payment.amount, locale, hideCents)} {payment.asset}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto sm:block">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-[#F9F9F9] border-b border-[#E8E8E8]">
