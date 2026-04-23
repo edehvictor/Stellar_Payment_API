@@ -569,14 +569,14 @@ export default function SettingsPage() {
               key={item.id}
               type="button"
               onClick={() => setActiveTab(item.id)}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-left transition-all ${
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-left transition-all duration-200 ${
                 activeTab === item.id
                   ? item.danger
-                    ? "bg-red-50 text-red-600 border border-red-200"
-                    : "bg-[#4a6fa5] text-white"
+                    ? "bg-red-50 text-red-600 border border-red-200 shadow-sm"
+                    : "bg-[var(--pluto-500)] text-white shadow-md scale-[1.02]"
                   : item.danger
-                    ? "text-red-500 hover:bg-red-50"
-                    : "text-[#6B6B6B] hover:bg-[#f0f6fb] hover:text-[#2d4a7a]"
+                    ? "text-red-500 hover:bg-red-50 hover:shadow-sm hover:scale-[1.01]"
+                    : "text-[#6B6B6B] hover:bg-[var(--pluto-50)] hover:text-[var(--pluto-700)] hover:shadow-sm hover:scale-[1.01]"
               }`}
             >
               <span className="shrink-0">{item.icon}</span>
@@ -592,14 +592,14 @@ export default function SettingsPage() {
               key={item.id}
               type="button"
               onClick={() => setActiveTab(item.id)}
-              className={`shrink-0 rounded-lg px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all ${
+              className={`shrink-0 rounded-lg px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-200 ${
                 activeTab === item.id
                   ? item.danger
-                    ? "bg-red-500 text-white"
+                    ? "bg-red-500 text-white shadow-md"
                     : "bg-white text-[#0A0A0A] shadow-sm"
                   : item.danger
-                    ? "text-red-500"
-                    : "text-[#6B6B6B]"
+                    ? "text-red-500 hover:bg-red-50 hover:shadow-sm"
+                    : "text-[#6B6B6B] hover:bg-[var(--pluto-50)] hover:shadow-sm"
               }`}
             >
               {item.label}
@@ -689,7 +689,7 @@ export default function SettingsPage() {
                         type="button"
                         onClick={confirmRotate}
                         disabled={rotating}
-                        className="flex-1 rounded-xl bg-[#4a6fa5] py-2.5 text-xs font-bold uppercase tracking-widest text-white hover:bg-[#3d6494] disabled:opacity-50 transition-all"
+                        className="flex-1 rounded-xl bg-[var(--pluto-500)] py-2.5 text-xs font-bold uppercase tracking-widest text-white hover:bg-[var(--pluto-600)] hover:shadow-md hover:scale-[1.01] disabled:opacity-50 transition-all duration-200"
                       >
                         Confirm
                       </button>
@@ -697,7 +697,7 @@ export default function SettingsPage() {
                         type="button"
                         onClick={() => setConfirming(false)}
                         disabled={rotating}
-                        className="flex-1 rounded-xl border border-[#E8E8E8] bg-white py-2.5 text-xs font-bold uppercase tracking-widest text-[#6B6B6B] hover:bg-[#F5F5F5] disabled:opacity-50 transition-all"
+                        className="flex-1 rounded-xl border border-[#E8E8E8] bg-white py-2.5 text-xs font-bold uppercase tracking-widest text-[#6B6B6B] hover:bg-[#F5F5F5] hover:shadow-sm hover:border-[#D0D0D0] disabled:opacity-50 transition-all duration-200"
                       >
                         Cancel
                       </button>
@@ -873,7 +873,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={saveBranding}
                   disabled={loadingBranding || savingBranding}
-                  className="flex-1 rounded-xl bg-[#4a6fa5] py-3 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-[#3d6494] disabled:opacity-50 transition-all"
+                  className="flex-1 rounded-xl bg-[var(--pluto-500)] py-3 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-[var(--pluto-600)] hover:shadow-md hover:scale-[1.01] disabled:opacity-50 transition-all duration-200"
                 >
                   {savingBranding ? "Saving…" : "Save Branding"}
                 </button>
@@ -881,7 +881,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => setIsPreviewOpen(true)}
                   disabled={!apiKey}
-                  className="rounded-xl border border-[#E8E8E8] bg-white px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:bg-[#F5F5F5] hover:text-[#0A0A0A] disabled:opacity-50 transition-all"
+                  className="rounded-xl border border-[#E8E8E8] bg-white px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:bg-[#F5F5F5] hover:text-[#0A0A0A] hover:shadow-sm hover:border-[#D0D0D0] disabled:opacity-50 transition-all duration-200"
                 >
                   Preview Receipt
                 </button>
@@ -975,7 +975,7 @@ export default function SettingsPage() {
                     disabled={
                       savingWebhook || loadingWebhook || !!webhookUrlError
                     }
-                    className="flex-1 rounded-xl bg-[#4a6fa5] py-2.5 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-[#3d6494] disabled:opacity-50 transition-all"
+                    className="flex-1 rounded-xl bg-[var(--pluto-500)] py-2.5 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-[var(--pluto-600)] hover:shadow-md hover:scale-[1.01] disabled:opacity-50 transition-all duration-200"
                   >
                     {savingWebhook ? "Saving…" : "Save URL"}
                   </button>
@@ -983,7 +983,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={testWebhook}
                     disabled={testingWebhook || !webhookUrl}
-                    className="flex-1 rounded-xl border border-[#E8E8E8] bg-white py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:bg-[#F5F5F5] hover:text-[#0A0A0A] disabled:opacity-50 transition-all"
+                    className="flex-1 rounded-xl border border-[#E8E8E8] bg-white py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#6B6B6B] hover:bg-[#F5F5F5] hover:text-[#0A0A0A] hover:shadow-sm hover:border-[#D0D0D0] disabled:opacity-50 transition-all duration-200"
                   >
                     {testingWebhook ? "Testing…" : "Send Test"}
                   </button>
@@ -1015,7 +1015,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={verifyWebhookDomain}
                     disabled={verifyingWebhookDomain}
-                    className="rounded-xl border border-[#E8E8E8] bg-white py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#0A0A0A] hover:bg-[#F5F5F5] disabled:opacity-50 transition-all"
+                    className="rounded-xl border border-[#E8E8E8] bg-white py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#0A0A0A] hover:bg-[#F5F5F5] hover:shadow-sm hover:border-[#D0D0D0] disabled:opacity-50 transition-all duration-200"
                   >
                     {verifyingWebhookDomain ? "Verifying…" : "Verify Domain"}
                   </button>
@@ -1085,7 +1085,7 @@ export default function SettingsPage() {
                         type="button"
                         onClick={regenerateWebhookSecret}
                         disabled={regeneratingSecret}
-                        className="flex-1 rounded-xl bg-[#4a6fa5] py-2.5 text-xs font-bold uppercase tracking-widest text-white hover:bg-[#3d6494] disabled:opacity-50 transition-all"
+                        className="flex-1 rounded-xl bg-[var(--pluto-500)] py-2.5 text-xs font-bold uppercase tracking-widest text-white hover:bg-[var(--pluto-600)] hover:shadow-md hover:scale-[1.01] disabled:opacity-50 transition-all duration-200"
                       >
                         Confirm
                       </button>
@@ -1093,7 +1093,7 @@ export default function SettingsPage() {
                         type="button"
                         onClick={() => setConfirmRegenSecret(false)}
                         disabled={regeneratingSecret}
-                        className="flex-1 rounded-xl border border-[#E8E8E8] bg-white py-2.5 text-xs font-bold uppercase tracking-widest text-[#6B6B6B] hover:bg-[#F5F5F5] disabled:opacity-50 transition-all"
+                        className="flex-1 rounded-xl border border-[#E8E8E8] bg-white py-2.5 text-xs font-bold uppercase tracking-widest text-[#6B6B6B] hover:bg-[#F5F5F5] hover:shadow-sm hover:border-[#D0D0D0] disabled:opacity-50 transition-all duration-200"
                       >
                         Cancel
                       </button>
