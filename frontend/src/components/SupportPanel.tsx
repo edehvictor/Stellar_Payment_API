@@ -6,6 +6,7 @@ import { getAccountBalances, type AssetBalance } from "@/lib/stellar";
 import { Spinner } from "./ui/Spinner";
 import { TransactionResultModal } from "./TransactionResultModal";
 import { toast } from "sonner";
+import { useBalanceSync } from "@/hooks/useBalanceSync";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const HORIZON_URL = process.env.NEXT_PUBLIC_HORIZON_URL ?? "https://horizon-testnet.stellar.org";
@@ -13,8 +14,6 @@ const HORIZON_URL = process.env.NEXT_PUBLIC_HORIZON_URL ?? "https://horizon-test
 export function SupportPanel() {
   const { activeProvider } = useWallet();
   const [visitorAddress, setVisitorAddress] = useState<string | null>(null);
-  const [balances, setBalances] = useState<AssetBalance[]>([]);
-  const [loadingBalance, setLoadingBalance] = useState(false);
   const [amount, setAmount] = useState("");
   const [assetCode, setAssetCode] = useState("XLM");
   const [message, setMessage] = useState("");
@@ -31,21 +30,13 @@ export function SupportPanel() {
     }
   }, [activeProvider]);
 
-  // Fetch balances when address is set
-  useEffect(() => {
-    if (visitorAddress) {
-      setLoadingBalance(true);
-      getAccountBalances(visitorAddress, HORIZON_URL)
-        .then(setBalances)
-        .catch((err) => {
-          console.error("Failed to fetch balances", err);
-          toast.error("Failed to fetch wallet balance");
-        })
-        .finally(() => setLoadingBalance(false));
-    }
-  }, [visitorAddress]);
+  const { balances, isLoading: loadingBalance } = useBalanceSync(null, null, {
+    address: visitorAddress,
+    horizonUrl: HORIZON_URL,
+    enabled: !!visitorAddress,
+  });
 
-  const selectedBalance = balances.find((b) => b.code === assetCode)?.balance ?? "0";
+  const selectedBalance = (balances as any).find((b: any) => b.code === assetCode)?.balance ?? "0";
   const isUnfunded = visitorAddress && balances.length === 0 && !loadingBalance;
   
   const handleAmountChange = (val: string) => {

@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { usePermissionsStore } from "@/hooks/usePermissionsStore";
 
 /**
  * Permission type for user access control
@@ -96,52 +97,7 @@ export const UserPermissionsManager: React.FC<UserPermissionsManagerProps> =
     showCategories = true,
   }) => {
     const t = useTranslations();
-    const [permissions, setPermissions] = useState<Permission[]>([
-      {
-        id: "payment-read",
-        name: "View Payments",
-        description: t("permissions.payment.read") || "View all payments",
-        granted: true,
-        category: "payment",
-      },
-      {
-        id: "payment-write",
-        name: "Create Payments",
-        description: t("permissions.payment.write") || "Create new payments",
-        granted: false,
-        category: "payment",
-      },
-      {
-        id: "webhook-read",
-        name: "View Webhooks",
-        description:
-          t("permissions.webhook.read") || "View webhook configurations",
-        granted: true,
-        category: "webhook",
-      },
-      {
-        id: "webhook-write",
-        name: "Manage Webhooks",
-        description:
-          t("permissions.webhook.write") || "Create and modify webhooks",
-        granted: false,
-        category: "webhook",
-      },
-      {
-        id: "analytics-read",
-        name: "View Analytics",
-        description: t("permissions.analytics.read") || "View analytics data",
-        granted: true,
-        category: "analytics",
-      },
-      {
-        id: "admin-access",
-        name: "Admin Access",
-        description: t("permissions.admin") || "Full system administration",
-        granted: false,
-        category: "admin",
-      },
-    ]);
+    const { permissions, togglePermission } = usePermissionsStore();
 
     const [expandedCategory, setExpandedCategory] = useState<string | null>(
       "payment"
@@ -157,25 +113,14 @@ export const UserPermissionsManager: React.FC<UserPermissionsManagerProps> =
           return;
         }
 
-        // Store previous state for rollback
-        const previousPermissions = [...permissions];
-
-        // Optimistically update local state
-        const optimisticPermissions = permissions.map((perm) =>
-          perm.id === permissionId
-            ? {
-                ...perm,
-                granted: !perm.granted,
-                lastModified: new Date(),
-              }
-            : perm
-        );
-
-        setPermissions(optimisticPermissions);
+        // Optimistically update local state (Zustand update is synchronous)
+        const previousPermission = permissions.find(p => p.id === permissionId);
+        togglePermission(permissionId);
 
         try {
           // Attempt to update permissions via callback
-          await onPermissionsChange?.(optimisticPermissions);
+          const updatedPermissions = usePermissionsStore.getState().permissions;
+          await onPermissionsChange?.(updatedPermissions as any);
 
           // Show success toast if no error
           toast.success(
@@ -183,7 +128,9 @@ export const UserPermissionsManager: React.FC<UserPermissionsManagerProps> =
           );
         } catch (error) {
           // Revert optimistic update on error
-          setPermissions(previousPermissions);
+          if (previousPermission) {
+            togglePermission(permissionId); // Toggling again reverts it
+          }
 
           toast.error(
             t("permissions.updateFailed") || "Failed to update permission. Please try again."
@@ -192,7 +139,7 @@ export const UserPermissionsManager: React.FC<UserPermissionsManagerProps> =
           console.error("Permission update failed:", error);
         }
       },
-      [isReadOnly, permissions, onPermissionsChange, t]
+      [isReadOnly, permissions, togglePermission, onPermissionsChange, t]
     );
 
     /**
@@ -207,7 +154,7 @@ export const UserPermissionsManager: React.FC<UserPermissionsManagerProps> =
       };
 
       permissions.forEach((perm) => {
-        groups[perm.category].push(perm);
+        groups[perm.category as string].push(perm as any);
       });
 
       return groups;
