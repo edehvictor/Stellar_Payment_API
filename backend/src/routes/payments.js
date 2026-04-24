@@ -6,6 +6,7 @@ import { paymentService } from "../services/paymentService.js";
 import { validateUuidParam } from "../lib/validate-uuid.js";
 import {
   paymentSessionZodSchema,
+  paymentZodSchema,
   refundConfirmSchema,
   pathPaymentQuoteQuerySchema,
   paymentsListQuerySchema

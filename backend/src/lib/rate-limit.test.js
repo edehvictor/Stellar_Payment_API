@@ -62,6 +62,7 @@ describe("createVerifyPaymentRateLimit", () => {
       keyGenerator: expect.any(Function),
       requestWasSuccessful: expect.any(Function),
       store,
+      passOnStoreError: true,
     });
   });
 });

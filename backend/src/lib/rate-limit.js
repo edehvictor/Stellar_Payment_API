@@ -76,6 +76,7 @@ export function createVerifyPaymentRateLimit({
       return res.statusCode < 400;
     },
     store,
+    passOnStoreError: true,
   });
 }
 
@@ -97,5 +98,6 @@ export function createMerchantRegistrationRateLimit({
       return res.statusCode < 400;
     },
     store,
+    passOnStoreError: true,
   });
 }
