@@ -2,7 +2,6 @@ import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { logger } from "../lib/logger.js";
 import express from "express";
-import rateLimit from "express-rate-limit";
 import { paymentService } from "../services/paymentService.js";
 import { validateUuidParam } from "../lib/validate-uuid.js";
 import {
@@ -13,6 +12,7 @@ import {
 } from "../lib/request-schemas.js";
 import { validateRequest } from "../lib/validation.js";
 import { createCreatePaymentRateLimit } from "../lib/create-payment-rate-limit.js";
+import { createVerifyPaymentRateLimit } from "../lib/rate-limit.js";
 import { recaptchaMiddleware } from "../lib/recaptcha.js";
 import { sendWebhook, isEventSubscribed } from "../lib/webhooks.js";
 import { sendReceiptEmail } from "../lib/email.js";
@@ -46,13 +46,7 @@ import {
 
 const createPaymentRateLimit = createCreatePaymentRateLimit();
 
-const defaultVerifyPaymentRateLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 minute window
-  max: 30,             // 30 requests per minute per IP (covers 10s polling)
-  message: { error: "Too many verification requests, please try again later." },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+const defaultVerifyPaymentRateLimit = createVerifyPaymentRateLimit();
 
 
 

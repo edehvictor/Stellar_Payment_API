@@ -117,14 +117,18 @@ function makePayment(overrides = {}) {
     created_at: new Date(Date.now() - 5_000).toISOString(),
     merchant_id: "merchant-001",
     metadata: {},
-    merchants: {
-      webhook_secret: "secret",
-      webhook_version: "v1",
-      notification_email: "merchant@example.com",
-      email: "merchant@example.com",
-      business_name: "Test Merchant",
-      webhook_custom_headers: {},
-    },
+    ...overrides,
+  };
+}
+
+function makeMerchant(overrides = {}) {
+  return {
+    webhook_secret: "secret",
+    webhook_version: "v1",
+    notification_email: "merchant@example.com",
+    email: "merchant@example.com",
+    business_name: "Test Merchant",
+    webhook_custom_headers: {},
     ...overrides,
   };
 }
@@ -181,9 +185,10 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
       const payment = makePayment();
 
       // The poller makes 3 calls to supabase.from("payments"):
-      //   1. Fetch pending payments (select + limit)
+      //   1. Fetch pending payments (select + order + limit)
       //   2. Duplicate-tx guard (select + neq + maybeSingle → null)
       //   3. Atomic update (update + maybeSingle → { id })
+      //   4. Merchant notification config lookup
       let fromCallCount = 0;
       mockSupabaseFrom.mockImplementation(() => {
         fromCallCount += 1;
@@ -194,6 +199,7 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
             eq: vi.fn().mockReturnThis(),
             is: vi.fn().mockReturnThis(),
             gte: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
             limit: vi.fn().mockResolvedValue({ data: [payment], error: null }),
           };
         }
@@ -207,14 +213,21 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
             maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
           };
         }
-        // Atomic update — success
+        if (fromCallCount === 3) {
+          // Atomic update — success
+          return {
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnThis(),
+              is: vi.fn().mockReturnThis(),
+              select: vi.fn().mockReturnThis(),
+              maybeSingle: vi.fn().mockResolvedValue({ data: { id: payment.id }, error: null }),
+            }),
+          };
+        }
         return {
-          update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnThis(),
-            is: vi.fn().mockReturnThis(),
-            select: vi.fn().mockReturnThis(),
-            maybeSingle: vi.fn().mockResolvedValue({ data: { id: payment.id }, error: null }),
-          }),
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: makeMerchant(), error: null }),
         };
       });
 
@@ -256,6 +269,7 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({ data: [payment], error: null }),
       }));
 
@@ -287,6 +301,7 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({ data: [payment], error: null }),
       }));
 
@@ -314,6 +329,7 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({ data: [payment], error: null }),
       }));
 
@@ -356,6 +372,7 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({ data: null, error: { message: "DB down" } }),
       }));
 
@@ -379,6 +396,7 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockImplementation(() => {
           callCount += 1;
           if (callCount === 1) {
@@ -422,6 +440,7 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({ data: [payment], error: null }),
         update: updateMock,
       }));
@@ -466,6 +485,7 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({ data: [payment], error: null }),
         update: updateMock,
       }));
@@ -503,6 +523,7 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({ data: [payment], error: null }),
       }));
 
@@ -519,6 +540,7 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({ data: [payment], error: null }),
       }));
 
@@ -540,6 +562,7 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
         neq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({ data: [payment], error: null }),
         // Duplicate check returns an existing payment
         maybeSingle: vi.fn().mockResolvedValue({ data: { id: "other-pay" }, error: null }),
@@ -574,8 +597,72 @@ describe("Ledger Monitor — error recovery (Issue #627)", () => {
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({ data: [], error: null }),
       }));
+
+  describe("merchant notification lookup", () => {
+    it("continues confirmation when merchant notification config lookup fails", async () => {
+      const payment = makePayment();
+
+      let fromCallCount = 0;
+      mockSupabaseFrom.mockImplementation(() => {
+        fromCallCount += 1;
+        if (fromCallCount === 1) {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
+            gte: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue({ data: [payment], error: null }),
+          };
+        }
+        if (fromCallCount === 2) {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            neq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          };
+        }
+        if (fromCallCount === 3) {
+          return {
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnThis(),
+              is: vi.fn().mockReturnThis(),
+              select: vi.fn().mockReturnThis(),
+              maybeSingle: vi.fn().mockResolvedValue({ data: { id: payment.id }, error: null }),
+            }),
+          };
+        }
+
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: { message: "merchant lookup failed" } }),
+        };
+      });
+
+      mockFindMatchingPayment.mockResolvedValue({
+        id: "op-1",
+        transaction_hash: "tx-abc",
+        received_amount: "10.0000000",
+      });
+      mockVerifyTransactionSignature.mockResolvedValue({
+        valid: true,
+        reason: "ok",
+        isMultiSig: false,
+        signatureCount: 1,
+        thresholdMet: true,
+      });
+
+      await pollOnce();
+
+      expect(mockPaymentConfirmedCounter.inc).toHaveBeenCalledWith({ asset: payment.asset });
+      expect(mockSendWebhook).not.toHaveBeenCalled();
+    });
+  });
 
       await pollOnce();
 

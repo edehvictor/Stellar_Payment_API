@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import * as Recharts from "recharts";
 const {
@@ -83,9 +83,9 @@ function computeMovingAverages(
 
 export default function PaymentMetrics({
   showSkeleton = false,
-}: {
+}: Readonly<{
   showSkeleton?: boolean;
-}) {
+}>) {
   const t = useTranslations("paymentMetrics");
   const locale = localeToLanguageTag(useLocale());
   const [summary, setSummary] = useState<MetricsResponse | null>(null);
@@ -97,6 +97,10 @@ export default function PaymentMetrics({
   const apiKey = useMerchantApiKey();
   const hydrated = useMerchantHydrated();
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartTitleId = useId();
+  const chartDescriptionId = useId();
+  const chartSummaryId = useId();
+  const chartTableId = useId();
 
   useHydrateMerchantStore();
 
@@ -222,6 +226,11 @@ export default function PaymentMetrics({
               : Number(dataPoint.count) || 0,
         }))
       : [];
+  const visibleAssets = assets.filter((asset) => !hiddenAssets.has(asset));
+  const chartSummary =
+    assets.length === 0
+      ? `${t("chartTitle")}. ${t("noPayments")}.`
+      : `${t("chartTitle")}. ${t("chartSubtitle")}. Range ${range}. Showing ${visibleAssets.length} of ${assets.length} assets across ${chartData.length} time periods.`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -272,16 +281,27 @@ export default function PaymentMetrics({
         </div>
       )}
 
-      <div
+      <section
         ref={chartContainerRef}
+        aria-labelledby={chartTitleId}
+        aria-describedby={`${chartDescriptionId} ${chartSummaryId} ${chartTableId}`}
         className="flex flex-col gap-8 rounded-lg border border-[#E8E8E8] bg-white p-8"
       >
+        <div id={chartSummaryId} className="sr-only" aria-live="polite">
+          {chartSummary}
+        </div>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider">
+            <h3
+              id={chartTitleId}
+              className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider"
+            >
               {t("chartTitle")}
             </h3>
-            <p className="text-[10px] font-medium text-[#6B6B6B] uppercase tracking-widest mt-1">
+            <p
+              id={chartDescriptionId}
+              className="text-[10px] font-medium text-[#6B6B6B] uppercase tracking-widest mt-1"
+            >
               {t("chartSubtitle")}
             </p>
           </div>
@@ -310,7 +330,6 @@ export default function PaymentMetrics({
         {assets.length > 0 && (
           <div
             className="flex flex-wrap gap-2"
-            role="group"
             aria-label={t("toggleAssetVisibility")}
           >
             {assets.map((asset, index) => {
@@ -354,7 +373,34 @@ export default function PaymentMetrics({
             {t("noPayments")}
           </p>
         ) : (
-          <div data-export-chart>
+          <>
+            <table id={chartTableId} className="sr-only">
+              <caption>{`${t("chartTitle")} data table`}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  {visibleAssets.map((asset) => (
+                    <th key={asset} scope="col">{asset}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {chartData.map((dataPoint) => (
+                  <tr key={dataPoint.date}>
+                    <th scope="row">{dataPoint.dateShort}</th>
+                    {visibleAssets.map((asset) => (
+                      <td key={`${dataPoint.date}-${asset}`}>
+                        {typeof dataPoint[asset] === "number"
+                          ? dataPoint[asset].toLocaleString()
+                          : Number(dataPoint[asset] || 0).toLocaleString()}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div data-export-chart aria-hidden="true">
             <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
               <LineChart
                 data={chartData}
@@ -446,9 +492,10 @@ export default function PaymentMetrics({
                 )}
               </LineChart>
             </ResponsiveContainer>
-          </div>
+            </div>
+          </>
         )}
-      </div>
+      </section>
     </div>
   );
 }

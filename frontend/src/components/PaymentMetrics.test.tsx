@@ -19,7 +19,7 @@ vi.mock("@/lib/merchant-store", () => ({
     useHydrateMerchantStore: vi.fn(),
 }));
 
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
+globalThis.ResizeObserver = vi.fn().mockImplementation(() => ({
     observe: vi.fn(),
     unobserve: vi.fn(),
     disconnect: vi.fn(),
@@ -39,12 +39,12 @@ vi.mock("recharts", () => ({
 describe("PaymentMetrics Component", () => {
     beforeEach(() => {
         vi.resetAllMocks();
-        global.fetch = vi.fn();
+        globalThis.fetch = vi.fn();
     });
 
     it("renders loading skeleton initially", () => {
         // Fetch never resolves — component stays in loading state
-        (global.fetch as any).mockReturnValue(new Promise(() => {}));
+        (globalThis.fetch as any).mockReturnValue(new Promise(() => {}));
 
         render(React.createElement(PaymentMetrics));
 
@@ -60,7 +60,7 @@ describe("PaymentMetrics Component", () => {
             data: [],
         };
 
-        (global.fetch as any)
+        (globalThis.fetch as any)
             .mockResolvedValueOnce({ ok: true, json: async () => mockSummary })
             .mockResolvedValueOnce({ ok: true, json: async () => ({ assets: [], data: [] }) });
 
@@ -73,9 +73,35 @@ describe("PaymentMetrics Component", () => {
         });
     });
 
+    it("exposes an accessible chart region and hidden data table", async () => {
+        (globalThis.fetch as any)
+            .mockResolvedValueOnce({ ok: true, json: async () => ({ total_volume: 1500, confirmed_count: 42, success_rate: 98.5, data: [] }) })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    assets: ["XLM", "USDC"],
+                    data: [
+                        { date: "2026-04-20", count: 2, XLM: 10, USDC: 5 },
+                        { date: "2026-04-21", count: 1, XLM: 12, USDC: 0 },
+                    ],
+                }),
+            });
+
+        render(React.createElement(PaymentMetrics));
+
+        await waitFor(() => {
+            expect(screen.getByRole("region", { name: "chartTitle" })).toBeInTheDocument();
+        });
+
+        expect(screen.getByText(/Range 7D\. Showing 2 of 2 assets across 2 time periods\./)).toBeInTheDocument();
+        expect(screen.getByRole("table", { name: "chartTitle data table" })).toBeInTheDocument();
+        expect(screen.getByRole("columnheader", { name: "XLM" })).toBeInTheDocument();
+        expect(screen.getByRole("cell", { name: "10" })).toBeInTheDocument();
+    });
+
     it("renders error message on fetch failure", async () => {
         // Reject with non-Error so component uses t("fetchMetricsFailed") fallback
-        (global.fetch as any).mockRejectedValue("network failure");
+        (globalThis.fetch as any).mockRejectedValue("network failure");
 
         render(React.createElement(PaymentMetrics));
 
@@ -86,7 +112,7 @@ describe("PaymentMetrics Component", () => {
     });
 
     it("displays 'No payments' message when assets list is empty", async () => {
-        (global.fetch as any)
+        (globalThis.fetch as any)
             .mockResolvedValueOnce({ ok: true, json: async () => ({ total_volume: 0, confirmed_count: 0, success_rate: 0, data: [] }) })
             .mockResolvedValueOnce({ ok: true, json: async () => ({ assets: [], data: [] }) });
 

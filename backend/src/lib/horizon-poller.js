@@ -47,6 +47,14 @@ import {
 const POLL_INTERVAL_MS = 15_000;       // 15 seconds between normal cycles
 const BATCH_SIZE = 50;                 // max pending payments per cycle
 const MAX_AGE_HOURS = 24;             // ignore payments older than 24 h (likely abandoned)
+const MERCHANT_NOTIFICATION_FIELDS = [
+  "webhook_secret",
+  "webhook_version",
+  "notification_email",
+  "email",
+  "business_name",
+  "webhook_custom_headers",
+].join(", ");
 
 /** Back-off schedule (ms) applied after consecutive Horizon fetch failures. */
 const BACKOFF_DELAYS_MS = [5_000, 15_000, 30_000, 60_000];
@@ -152,10 +160,11 @@ async function pollPendingPayments() {
 
     const { data: pending, error } = await supabase
       .from("payments")
-      .select("id, amount, asset, asset_issuer, recipient, memo, memo_type, webhook_url, created_at, merchant_id, merchants(webhook_secret, webhook_version, notification_email, email, business_name, webhook_custom_headers)")
+      .select("id, amount, asset, asset_issuer, recipient, memo, memo_type, webhook_url, created_at, merchant_id, metadata")
       .eq("status", "pending")
       .is("deleted_at", null)
       .gte("created_at", cutoff)
+      .order("created_at", { ascending: true })
       .limit(BATCH_SIZE);
 
     if (error) {
@@ -489,7 +498,7 @@ async function checkPayment(payment) {
     }
 
     // Webhook
-    const merchant = payment.merchants;
+    const merchant = await loadMerchantNotificationConfig(payment.merchant_id);
     if (merchant) {
       const webhookPayload = getPayloadForVersion(
         merchant.webhook_version || "v1",
@@ -543,4 +552,26 @@ async function checkPayment(payment) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function loadMerchantNotificationConfig(merchantId) {
+  if (!merchantId) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("merchants")
+    .select(MERCHANT_NOTIFICATION_FIELDS)
+    .eq("id", merchantId)
+    .maybeSingle();
+
+  if (error) {
+    logger.warn(
+      { err: error, merchantId },
+      "Horizon poller: failed to load merchant notification config",
+    );
+    return null;
+  }
+
+  return data ?? null;
 }
